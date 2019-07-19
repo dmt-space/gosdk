@@ -8,6 +8,7 @@ import (
 var verifyPublickey = `e8a6cfa7b3076ae7e04764ffdfe341632a136b52953dfafa6926361dd9a466196faecca6f696774bbd64b938ff765dbc837e8766a5e2d8996745b2b94e1beb9e`
 var signPrivatekey = `5e1fc9c03d53a8b9a63030acc2864f0c33dffddb3c276bf2b3c8d739269cc018`
 var data = `TEST`
+var blsWallet *zcncrypto.Wallet
 
 func TestVanilla(t *testing.T) {
 	t.Log("TestVanilla Success")
