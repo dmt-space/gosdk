@@ -1,18 +1,22 @@
-package zcncrypto
+package zcncrypto_test
 
 import (
+	"github.com/0chain/gosdk/core/zcncrypto"
 	"testing"
 )
 
 var verifyPublickey = `e8a6cfa7b3076ae7e04764ffdfe341632a136b52953dfafa6926361dd9a466196faecca6f696774bbd64b938ff765dbc837e8766a5e2d8996745b2b94e1beb9e`
 var signPrivatekey = `5e1fc9c03d53a8b9a63030acc2864f0c33dffddb3c276bf2b3c8d739269cc018`
 var data = `TEST`
-var blsWallet *Wallet
+
+func TestVanilla(t *testing.T) {
+	t.Log("TestVanilla Success")
+}
 
 func TestSignatureScheme(t *testing.T) {
-	sigScheme := NewSignatureScheme("bls0chain")
+	sigScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	switch sigScheme.(type) {
-	case SignatureScheme:
+	case zcncrypto.SignatureScheme:
 		// pass
 	default:
 		t.Fatalf("Signature scheme invalid")
@@ -28,14 +32,14 @@ func TestSignatureScheme(t *testing.T) {
 }
 
 func TestSSSignAndVerify(t *testing.T) {
-	signScheme := NewSignatureScheme("bls0chain")
+	signScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	signScheme.SetPrivateKey(signPrivatekey)
-	hash := Sha3Sum256(data)
+	hash := zcncrypto.Sha3Sum256(data)
 	signature, err := signScheme.Sign(hash)
 	if err != nil {
 		t.Fatalf("BLS signing failed")
 	}
-	verifyScheme := NewSignatureScheme("bls0chain")
+	verifyScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	verifyScheme.SetPublicKey(verifyPublickey)
 	if ok, err := verifyScheme.Verify(signature, hash); err != nil || !ok {
 		t.Fatalf("Verification failed\n")
@@ -43,7 +47,7 @@ func TestSSSignAndVerify(t *testing.T) {
 }
 
 func BenchmarkBLSSign(b *testing.B) {
-	sigScheme := NewSignatureScheme("bls0chain")
+	sigScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	sigScheme.SetPrivateKey(signPrivatekey)
 	for i := 0; i < b.N; i++ {
 		_, err := sigScheme.Sign(data)
@@ -54,7 +58,7 @@ func BenchmarkBLSSign(b *testing.B) {
 }
 
 func TestRecoveryKeys(t *testing.T) {
-	sigScheme := NewSignatureScheme("bls0chain")
+	sigScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	w, err := sigScheme.RecoverKeys(blsWallet.Mnemonic, 2)
 	if err != nil {
 		t.Fatalf("set Recover Keys failed")
@@ -69,9 +73,9 @@ func TestCombinedSignAndVerify(t *testing.T) {
 	sk1 := `704b6f489583bf1118432fcfb38e63fc2d4b61e524fb196cbd95413f8eb91c12`
 	primaryKey := `f72fd53ee85e84157d3106053754594f697e0bfca1f73f91a41f7bb0797d901acefd80fcc2da98aae690af0ee9c795d6590c1808f26490306433b4e9c42f7b1f`
 
-	hash := Sha3Sum256(data)
+	hash := zcncrypto.Sha3Sum256(data)
 	// Create signatue for 1
-	sig0 := NewSignatureScheme("bls0chain")
+	sig0 := zcncrypto.NewSignatureScheme("bls0chain")
 	err := sig0.SetPrivateKey(sk0)
 	if err != nil {
 		t.Fatalf("Set private key failed - %s", err.Error())
@@ -81,14 +85,14 @@ func TestCombinedSignAndVerify(t *testing.T) {
 		t.Fatalf("BLS signing failed")
 	}
 	// Create signature for second
-	sig1 := NewSignatureScheme("bls0chain")
+	sig1 := zcncrypto.NewSignatureScheme("bls0chain")
 	err = sig1.SetPrivateKey(sk1)
 	if err != nil {
 		t.Fatalf("Set private key failed - %s", err.Error())
 	}
 	addSig, err := sig1.Add(signature, hash)
 
-	verifyScheme := NewSignatureScheme("bls0chain")
+	verifyScheme := zcncrypto.NewSignatureScheme("bls0chain")
 	err = verifyScheme.SetPublicKey(primaryKey)
 	if err != nil {
 		t.Fatalf("Set public key failed")

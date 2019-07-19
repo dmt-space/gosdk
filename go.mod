@@ -21,3 +21,5 @@ require (
 	golang.org/x/mobile v0.0.0-20190327163128-167ebed0ec6d
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )
+
+replace github.com/0chain/gosdk => /Volumes/work/0CHAIN/codebox/discovery/gosdk
