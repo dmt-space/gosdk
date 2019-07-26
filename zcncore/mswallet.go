@@ -10,6 +10,10 @@ import (
 	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
+const (
+	DefaultExpirationTime = 60 * 60 * 24 * 7 // Proposals expire after one week.
+)
+
 //MSVote -- this should mimic the type Vote defined in MultiSig SC
 type MSVote struct {
 	ProposalID string `json:"proposal_id"`
@@ -29,7 +33,8 @@ type MultisigSCWallet struct {
 	SignerThresholdIDs []string `json:"signer_threshold_ids"`
 	SignerPublicKeys   []string `json:"signer_public_keys"`
 
-	NumRequired int `json:"num_required"`
+	NumRequired    int   `json:"num_required"`
+	ExpirationTime int64 `json:"exp_time"` //proposal expiry time in seconds
 }
 
 // MSWallet Client data necessary for a multi-sig wallet.
@@ -42,6 +47,8 @@ type MSWallet struct {
 	SignerKeys      []zcncrypto.BLS0ChainThresholdScheme `json:"signer_keys"`
 	T               int                                  `json:"threshold"`
 	N               int                                  `json:"num_subkeys"`
+	ExpirationTime  int64                                `json:"exp_time"` //proposal expiry time in seconds
+
 }
 
 //MSTransfer - a data structure to hold state transfer from one client to another
@@ -66,7 +73,7 @@ type MSVoteCallback interface {
 }
 
 // CreateMSWallet returns multisig wallet information
-func CreateMSWallet(t, n int) (string, string, []string, error) {
+func CreateMSWallet(t, n int, expTime int64) (string, string, []string, error) {
 	id := 0
 	if _config.chain.SignatureScheme != "bls0chain" {
 		return "", "", nil, fmt.Errorf("encryption scheme for this blockchain is not bls0chain")
@@ -82,7 +89,6 @@ func CreateMSWallet(t, n int) (string, string, []string, error) {
 	Logger.Info(fmt.Sprintf("Wallet id: %s", wallet.ClientKey))
 
 	groupClientID := GetClientID(groupKey.GetPublicKey())
-	//Code modified to directly use BLS0ChainThresholdScheme
 	signerKeys, err := zcncrypto.BLS0GenerateThresholdKeyShares(t, n, groupKey)
 
 	if err != nil {
@@ -102,6 +108,7 @@ func CreateMSWallet(t, n int) (string, string, []string, error) {
 		SignerKeys:      signerKeys,
 		T:               t,
 		N:               n,
+		ExpirationTime:  expTime,
 	}
 
 	wallets, errw := getWallets(msw)
@@ -153,7 +160,6 @@ func CreateMSVote(proposal, grpClientID, signerWalletstr, toClientID string, tok
 		return "", err
 	}
 
-	//Note: Is this honored by multisig sc?
 	transfer := MSTransfer{
 		ClientID:   grpClientID,
 		ToClientID: toClientID,
@@ -258,7 +264,8 @@ func GetMultisigPayload(mswstr string) (interface{}, error) {
 		SignerThresholdIDs: signerThresholdIDs,
 		SignerPublicKeys:   signerPublicKeys,
 
-		NumRequired: msw.T,
+		NumRequired:    msw.T,
+		ExpirationTime: msw.ExpirationTime,
 	}
 
 	return msscw, nil
