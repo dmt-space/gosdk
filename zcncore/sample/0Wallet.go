@@ -1,5 +1,3 @@
-// +build ignore
-
 package main
 
 import (
@@ -7,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"sync"
-
 	"github.com/0chain/gosdk/zcncore"
 )
 
@@ -75,7 +72,7 @@ func (s *StatusUI) OnVerifyComplete(t *zcncore.Transaction, status int) {
 	fmt.Println(t.GetVerifyOutput())
 }
 
-func (s *StatusUI) OnBalanceAvailable(status int, value int64) {
+func (s *StatusUI) OnBalanceAvailable(status int, value int64, txn string) {
 	defer s.wg.Done()
 	fmt.Println("=========== Balance Status:", status, "Value:", value,
 		"Token:", zcncore.ConvertToToken(value),
@@ -212,7 +209,7 @@ func main() {
 			return
 		}
 		s.wg.Add(1)
-		err = txn.ExecuteFaucetSC("pour", []byte{})
+		err = txn.ExecuteSmartContract(zcncore.FaucetSmartContractAddress, "pour", "{}", 1e10)
 		if err != nil {
 			fmt.Printf("execute faucet smart contract failed: %v\n", err)
 			return
