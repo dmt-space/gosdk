@@ -65,6 +65,7 @@ type RoundBlockHeader struct {
 	ReceiptMerkleTreeRoot string `json:"receipt_merkle_tree_root"`
 	NumberOfTxns          int64  `json:"num_txns"`
 }
+
 const NEW_ALLOCATION_REQUEST = "new_allocation_request"
 const LOCK_TOKEN = "lock"
 const UNLOCK_TOKEN = "unlock"
@@ -73,6 +74,7 @@ const DELETE_STAKE = "deleteFromDelegatePool"
 
 type SignFunc = func(msg string) (string, error)
 type VerifyFunc = func(signature, msgHash, publicKey string) (bool, error)
+type SignWithWallet = func(msg string, wallet interface{}) (string, error)
 
 func NewTransactionEntity(clientID string, chainID string, publicKey string) *Transaction {
 	txn := &Transaction{}
@@ -84,13 +86,18 @@ func NewTransactionEntity(clientID string, chainID string, publicKey string) *Tr
 	return txn
 }
 
-func (t *Transaction) ComputeHash() {
-	hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", t.CreationDate, t.ClientID,
-		t.ToClientID, t.Value, encryption.Hash(t.TransactionData))
-	t.Hash = encryption.Hash(hashdata)
+func (t *Transaction) ComputeHashAndSignWithWallet(signHandler SignWithWallet, signingWallet interface{}) error {
+	t.ComputeHashData()
+	var err error
+	t.Signature, err = signHandler(t.Hash, signingWallet)
+	if err != nil {
+		return err
+	}
+	return nil
 }
+
 func (t *Transaction) ComputeHashAndSign(signHandler SignFunc) error {
-	t.ComputeHash()
+	t.ComputeHashData()
 	var err error
 	t.Signature, err = signHandler(t.Hash)
 	if err != nil {
@@ -98,10 +105,17 @@ func (t *Transaction) ComputeHashAndSign(signHandler SignFunc) error {
 	}
 	return nil
 }
+
+func (t *Transaction) ComputeHashData() {
+	hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", t.CreationDate, t.ClientID,
+		t.ToClientID, t.Value, encryption.Hash(t.TransactionData))
+	t.Hash = encryption.Hash(hashdata)
+}
+
 func (t *Transaction) VerifyTransaction(verifyHandler VerifyFunc) (bool, error) {
 	// Store the hash
 	hash := t.Hash
-	t.ComputeHash()
+	t.ComputeHashData()
 	if t.Hash != hash {
 		return false, fmt.Errorf(`{"error":"hash_mismatch", "expected":"%v", "actual":%v"}`, t.Hash, hash)
 	}

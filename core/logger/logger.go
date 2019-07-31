@@ -50,6 +50,7 @@ type Logger struct {
 	fWriter  io.Writer
 }
 
+// Init - Initialize loggind
 func (l *Logger) Init(lvl int, prefix string) {
 	l.SetLevel(lvl)
 	l.prefix = prefix
@@ -84,7 +85,7 @@ func (l *Logger) SetLogFile(logFile io.Writer, verbose bool) {
 
 func (l *Logger) Debug(v ...interface{}) {
 	if l.lvl >= DEBUG {
-		l.logDebug.Output(2, fmt.Sprint(v...))
+		// l.logDebug.Output(2, fmt.Sprint(v...))
 	}
 }
 

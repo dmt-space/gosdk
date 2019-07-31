@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/gosdk/core/transaction"
-	"github.com/0chain/gosdk/core/util"
-	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/core/common"
-	"github.com/0chain/gosdk/core/encryption"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/0chain/gosdk/core/common"
+	"github.com/0chain/gosdk/core/encryption"
+	"github.com/0chain/gosdk/core/transaction"
+	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk/core/zcncrypto"
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 	errAuthTimeout      = errors.New("auth timed out")
 	errAddSignature     = errors.New("error adding signature")
 )
+
 // TransactionCallback needs to be implemented by the caller for transaction related APIs
 type TransactionCallback interface {
 	OnTransactionComplete(t *Transaction, status int)
@@ -63,6 +65,8 @@ type TransactionScheme interface {
 	StoreData(data string) error
 	// ExecuteSmartContract impements the Faucet Smart contract
 	ExecuteSmartContract(address, methodName, input string, val int64) error
+	// ExecuteFaucetSCWallet impements the Faucet Smart contract for a given wallet
+	ExecuteFaucetSCWallet(walletStr string, methodName string, input []byte) error
 	// GetTransactionHash implements retrieval of hash of the submitted transaction
 	GetTransactionHash() string
 	// LockTokens implements the lock token.
@@ -73,6 +77,8 @@ type TransactionScheme interface {
 	Stake(clientID string, val int64) error
 	// DeleteStake implements deleteing staked tokens
 	DeleteStake(clientID, poolID string) error
+	//RegisterMultiSig registers a group wallet and subwallets with MultisigSC
+	RegisterMultiSig(walletstr, mswallet string) error
 	// SetTransactionHash implements verify a previous transation status
 	SetTransactionHash(hash string) error
 	// SetTransactionFee implements method to set the transaction fee
@@ -91,6 +97,19 @@ func signFn(hash string) (string, error) {
 	sigScheme := zcncrypto.NewSignatureScheme(_config.chain.SignatureScheme)
 	sigScheme.SetPrivateKey(_config.wallet.Keys[0].PrivateKey)
 	return sigScheme.Sign(hash)
+}
+
+func signWithWallet(hash string, wi interface{}) (string, error) {
+	w, ok := wi.(*zcncrypto.Wallet)
+
+	if !ok {
+		fmt.Printf("Error in casting to wallet")
+		return "", fmt.Errorf("error in casting to wallet")
+	}
+	sigScheme := zcncrypto.NewSignatureScheme(_config.chain.SignatureScheme)
+	sigScheme.SetPrivateKey(w.Keys[0].PrivateKey)
+	return sigScheme.Sign(hash)
+
 }
 
 func txnTypeString(t int) string {
@@ -150,15 +169,15 @@ func (t *Transaction) submitTxn() {
 	for _, miner := range randomMiners {
 		go func(minerurl string) {
 			url := minerurl + PUT_TRANSACTION
-			Logger.Info("Submitting", txnTypeString(t.txn.TransactionType), "transaction to", minerurl)
+			Logger.Info("Submitting ", txnTypeString(t.txn.TransactionType), " transaction to ", minerurl)
 			req, err := util.NewHTTPPostRequest(url, t.txn)
 			if err != nil {
-				Logger.Error(minerurl, "new post request failed. ", err.Error())
+				Logger.Error(minerurl, " new post request failed. ", err.Error())
 				return
 			}
 			res, err := req.Post()
 			if err != nil {
-				Logger.Error(minerurl, "submit transaction error. ", err.Error())
+				Logger.Error(minerurl, " submit transaction error. ", err.Error())
 			}
 			result <- res
 			return
@@ -212,6 +231,7 @@ func NewTransaction(cb TransactionCallback, txnFee int64) (TransactionScheme, er
 	Logger.Info("New transaction interface")
 	return newTransaction(cb, txnFee)
 }
+
 func (t *Transaction) SetTransactionCallback(cb TransactionCallback) error {
 	if t.txnStatus != StatusUnknown {
 		return fmt.Errorf("transaction already exists. cannot set transaction hash.")
@@ -219,6 +239,7 @@ func (t *Transaction) SetTransactionCallback(cb TransactionCallback) error {
 	t.txnCb = cb
 	return nil
 }
+
 func (t *Transaction) SetTransactionFee(txnFee int64) error {
 	if t.txnStatus != StatusUnknown {
 		return fmt.Errorf("transaction already exists. cannot set transaction fee.")
@@ -245,7 +266,7 @@ func (t *Transaction) SendWithSignatureHash(toClientID string, val int64, desc s
 		t.txn.Value = val
 		t.txn.Hash = hash
 		t.txn.TransactionData = desc
-	t.txn.Signature = sig
+		t.txn.Signature = sig
 		t.txn.CreationDate = CreationDate
 		t.submitTxn()
 	}()
@@ -267,12 +288,40 @@ func (t *Transaction) createSmartContractTxn(address, methodName string, input i
 	if err != nil {
 		return fmt.Errorf("create smart contract failed due to invalid data. %s", err.Error())
 	}
-		t.txn.TransactionType = transaction.TxnTypeSmartContract
+	t.txn.TransactionType = transaction.TxnTypeSmartContract
 	t.txn.ToClientID = address
-		t.txn.TransactionData = string(snBytes)
+	t.txn.TransactionData = string(snBytes)
 	t.txn.Value = value
 	return nil
 }
+
+func (t *Transaction) createFaucetSCWallet(walletStr string, methodName string, input []byte) (*zcncrypto.Wallet, error) {
+	w, err := GetWallet(walletStr)
+	if err != nil {
+		fmt.Printf("Error while parsing the wallet. %v\n", err)
+		return nil, err
+	}
+	err = t.createSmartContractTxn(FaucetSmartContractAddress, methodName, input, 0)
+	if err != nil {
+		return nil, err
+	}
+	return w, nil
+}
+
+// ExecuteFaucetSCWallet impements the Faucet Smart contract for a given wallet
+func (t *Transaction) ExecuteFaucetSCWallet(walletStr string, methodName string, input []byte) error {
+	w, err := t.createFaucetSCWallet(walletStr, methodName, input)
+	if err != nil {
+		return err
+	}
+	go func() {
+		t.txn.ComputeHashAndSignWithWallet(signWithWallet, w)
+		fmt.Printf("submitted transaction\n")
+		t.submitTxn()
+	}()
+	return nil
+}
+
 func (t *Transaction) ExecuteSmartContract(address, methodName, input string, val int64) error {
 	err := t.createSmartContractTxn(address, methodName, input, val)
 	if err != nil {
@@ -320,16 +369,16 @@ func queryFromSharders(numSharders int, query string, result chan *util.GetRespo
 	randomShaders := util.GetRandom(_config.chain.Sharders, numSharders)
 	for _, sharder := range randomShaders {
 		go func(sharderurl string) {
-			Logger.Info("Query from", sharderurl+query)
+			Logger.Info("Query from ", sharderurl+query)
 			url := fmt.Sprintf("%v%v", sharderurl, query)
 			req, err := util.NewHTTPGetRequest(url)
 			if err != nil {
-				Logger.Error(sharderurl, "new get request failed. ", err.Error())
+				Logger.Error(sharderurl, " new get request failed. ", err.Error())
 				return
 			}
 			res, err := req.Get()
 			if err != nil {
-				Logger.Error(sharderurl, "get error. ", err.Error())
+				Logger.Error(sharderurl, " get error. ", err.Error())
 			}
 			result <- res
 			return
@@ -349,16 +398,16 @@ func getTransactionConfirmation(numSharders int, txnHash string) (map[string]jso
 		select {
 		case rsp := <-result:
 			Logger.Debug(rsp.Url, rsp.Status)
-			Logger.Error(rsp.Body)
+			Logger.Debug(rsp.Body)
 			if rsp.StatusCode == http.StatusOK {
 				var cfmLfb map[string]json.RawMessage
+				var objmap map[string]json.RawMessage
 				err := json.Unmarshal([]byte(rsp.Body), &cfmLfb)
 				if err != nil {
 					Logger.Error("txn confirmation parse error", err)
 					continue
 				}
 				if cfm, ok := cfmLfb["confirmation"]; ok {
-					var objmap map[string]json.RawMessage
 					err := json.Unmarshal([]byte(cfm), &objmap)
 					if err != nil {
 						Logger.Error("txn confirmation parse error", err)
@@ -375,12 +424,12 @@ func getTransactionConfirmation(numSharders int, txnHash string) (map[string]jso
 							}
 						}
 					} else {
-						Logger.Debug(rsp.Url, "No transaction confirmation")
+						Logger.Debug(rsp.Url, ". No transaction confirmation")
 					}
 				} else if lfbRaw, ok := cfmLfb["latest_finalized_block"]; ok {
 					err := json.Unmarshal([]byte(lfbRaw), &lfb)
 					if err != nil {
-						Logger.Error("round info parse error", err)
+						Logger.Error("round info parse error.", err)
 						continue
 					}
 				}
@@ -420,13 +469,13 @@ func getBlockInfoByRound(numSharders int, round int64, content string) (*blockHe
 				var objmap map[string]json.RawMessage
 				err := json.Unmarshal([]byte(rsp.Body), &objmap)
 				if err != nil {
-					Logger.Error("round info parse error", err)
+					Logger.Error("round info parse error. ", err)
 					continue
 				}
 				if header, ok := objmap["header"]; ok {
 					err := json.Unmarshal([]byte(header), &objmap)
 					if err != nil {
-						Logger.Error("round info parse error", err)
+						Logger.Error("round info parse error. ", err)
 						continue
 					}
 					if hash, ok := objmap["hash"]; ok {
@@ -436,7 +485,7 @@ func getBlockInfoByRound(numSharders int, round int64, content string) (*blockHe
 							maxConsensus = roundConsensus[h]
 							err := json.Unmarshal([]byte(header), &blkHdr)
 							if err != nil {
-								Logger.Error("round info parse error", err)
+								Logger.Error("round info parse error. ", err)
 								continue
 							}
 						}
@@ -522,38 +571,38 @@ func (t *Transaction) Verify() error {
 		t.txn.CreationDate = common.Now()
 	}
 
-				go func() {
+	go func() {
 		for {
 			// Get transaction confirmation from random sharder
 			confirmation, blockHash, lfb, err := getTransactionConfirmation(1, t.txnHash)
-							if err != nil {
+			if err != nil {
 				tn := common.Now()
-				Logger.Info(err, "now:", tn, "LFB creation time:", lfb.CreationDate)
+				Logger.Info(err, " now: ", tn, ", LFB creation time:", lfb.CreationDate)
 				if util.MaxInt64(lfb.CreationDate, tn) < (t.txn.CreationDate + int64(defaultTxnExpirationSeconds)) {
-					Logger.Info("falling back to", getMinShardersVerify(), "of ", len(_config.chain.Sharders), "Sharders")
+					Logger.Info("falling back to ", getMinShardersVerify(), " of ", len(_config.chain.Sharders), " Sharders")
 					confirmation, blockHash, lfb, err = getTransactionConfirmation(getMinShardersVerify(), t.txnHash)
-							if err != nil {
+					if err != nil {
 						if t.isTransactionExpired(lfb.CreationDate, tn) {
-							t.completeVerify(StatusError, "", fmt.Errorf(`{"error": "verify transaction failed"`))
-									return
+							t.completeVerify(StatusError, "", fmt.Errorf(`{"error": "verify transaction failed"}`))
+							return
 						}
-							continue
+						continue
 					}
 				} else {
 					if t.isTransactionExpired(lfb.CreationDate, tn) {
-						t.completeVerify(StatusError, "", fmt.Errorf(`{"error": "verify transaction failed"`))
-				return
-		}
-						continue
+						t.completeVerify(StatusError, "", fmt.Errorf(`{"error": "verify transaction failed"}`))
+						return
 					}
-						}
+					continue
+				}
+			}
 			valid := validateChain(confirmation, blockHash)
 			if valid {
 				output, err := json.Marshal(confirmation)
 				if err != nil {
 					t.completeVerify(StatusError, "", fmt.Errorf(`{"error": "transaction confirmation json marshal error"`))
 					return
-					}
+				}
 				t.completeVerify(StatusSuccess, string(output), nil)
 				return
 			}
@@ -619,10 +668,11 @@ func (t *Transaction) UnlockTokens(poolID string) error {
 	}()
 	return nil
 }
+
 func (t *Transaction) createStakeTxn(clientID string, val int64) error {
 	input := make(map[string]interface{})
 	input["id"] = clientID
-	return t.createSmartContractTxn(StakeSmartContractAddress, transaction.STAKE, input, val)
+	return t.createSmartContractTxn(MinerSmartContractAddress, transaction.STAKE, input, val)
 }
 
 func (t *Transaction) Stake(clientID string, val int64) error {
@@ -640,7 +690,7 @@ func (t *Transaction) createDeleteStakeTxn(clientID, poolID string) error {
 	input := make(map[string]interface{})
 	input["id"] = clientID
 	input["pool_id"] = poolID
-	return t.createSmartContractTxn(StakeSmartContractAddress, transaction.DELETE_STAKE, input, 0)
+	return t.createSmartContractTxn(MinerSmartContractAddress, transaction.DELETE_STAKE, input, 0)
 }
 
 func (t *Transaction) DeleteStake(clientID, poolID string) error {
@@ -649,6 +699,80 @@ func (t *Transaction) DeleteStake(clientID, poolID string) error {
 		return err
 	}
 	go func() {
+		t.submitTxn()
+	}()
+	return nil
+}
+
+//RegisterMultiSig register a multisig wallet with the SC.
+func (t *Transaction) RegisterMultiSig(walletstr string, mswallet string) error {
+	w, err := GetWallet(walletstr)
+	if err != nil {
+		fmt.Printf("Error while parsing the wallet. %v\n", err)
+		return err
+	}
+
+	msw, err := GetMultisigPayload(mswallet)
+	if err != nil {
+		fmt.Printf("\nError in registering. %v\n", err)
+		return err
+	}
+	sn := transaction.SmartContractTxnData{Name: MultiSigRegisterFuncName, InputArgs: msw}
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return fmt.Errorf("execute multisig register failed due to invalid data. %s", err.Error())
+	}
+	go func() {
+		t.txn.TransactionType = transaction.TxnTypeSmartContract
+		t.txn.ToClientID = MultiSigSmartContractAddress
+		t.txn.TransactionData = string(snBytes)
+		t.txn.Value = 0
+		t.txn.ComputeHashAndSignWithWallet(signWithWallet, w)
+		t.submitTxn()
+	}()
+	return nil
+}
+
+// NewMSTransaction new transaction object for multisig operation
+func NewMSTransaction(walletstr string, cb TransactionCallback) (*Transaction, error) {
+	w, err := GetWallet(walletstr)
+	if err != nil {
+		fmt.Printf("Error while parsing the wallet. %v", err)
+		return nil, err
+	}
+	t := &Transaction{}
+	t.txn = transaction.NewTransactionEntity(w.ClientID, _config.chain.ChainID, w.ClientKey)
+	t.txnStatus, t.verifyStatus = StatusUnknown, StatusUnknown
+	t.txnCb = cb
+	return t, nil
+}
+
+//RegisterVote register a multisig wallet with the SC.
+func (t *Transaction) RegisterVote(signerwalletstr string, msvstr string) error {
+
+	w, err := GetWallet(signerwalletstr)
+	if err != nil {
+		fmt.Printf("Error while parsing the wallet. %v", err)
+		return err
+	}
+
+	msv, err := GetMultisigVotePayload(msvstr)
+
+	if err != nil {
+		fmt.Printf("\nError in voting. %v\n", err)
+		return err
+	}
+	sn := transaction.SmartContractTxnData{Name: MultiSigVoteFuncName, InputArgs: msv}
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return fmt.Errorf("execute multisig vote failed due to invalid data. %s", err.Error())
+	}
+	go func() {
+		t.txn.TransactionType = transaction.TxnTypeSmartContract
+		t.txn.ToClientID = MultiSigSmartContractAddress
+		t.txn.TransactionData = string(snBytes)
+		t.txn.Value = 0
+		t.txn.ComputeHashAndSignWithWallet(signWithWallet, w)
 		t.submitTxn()
 	}()
 	return nil

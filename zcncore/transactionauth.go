@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/gosdk/core/transaction"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/core/zcncrypto"
-
 )
 
 type TransactionWithAuth struct {
@@ -97,7 +96,7 @@ func verifyFn(signature, msgHash, publicKey string) (bool, error) {
 }
 
 func (ta *TransactionWithAuth) sign(otherSig string) error {
-	ta.t.txn.ComputeHash()
+	ta.t.txn.ComputeHashData()
 	sig := zcncrypto.NewSignatureScheme(_config.chain.SignatureScheme)
 	sig.SetPrivateKey(_config.wallet.Keys[0].PrivateKey)
 	var err error
@@ -140,6 +139,19 @@ func (ta *TransactionWithAuth) StoreData(data string) error {
 	go func() {
 		ta.t.txn.TransactionType = transaction.TxnTypeData
 		ta.t.txn.TransactionData = data
+		ta.submitTxn()
+	}()
+	return nil
+}
+
+// ExecuteFaucetSCWallet impements the Faucet Smart contract for a given wallet
+func (ta *TransactionWithAuth) ExecuteFaucetSCWallet(walletStr string, methodName string, input []byte) error {
+	w, err := ta.t.createFaucetSCWallet(walletStr, methodName, input)
+	if err != nil {
+		return err
+	}
+	go func() {
+		ta.t.txn.ComputeHashAndSignWithWallet(signWithWallet, w)
 		ta.submitTxn()
 	}()
 	return nil
@@ -224,4 +236,9 @@ func (ta *TransactionWithAuth) DeleteStake(clientID, poolID string) error {
 		ta.submitTxn()
 	}()
 	return nil
+}
+
+//RegisterMultiSig register a multisig wallet with the SC.
+func (ta *TransactionWithAuth) RegisterMultiSig(walletstr string, mswallet string) error {
+	return fmt.Errorf("not implemented")
 }
