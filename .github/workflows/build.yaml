@@ -9,6 +9,7 @@ jobs:
     # Install all the dependencies
     - name: Install dependencies
       run: |
+        echo "running command"
         make build-tools
     - name: Install go
       run: |
