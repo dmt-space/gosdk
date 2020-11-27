@@ -10,3 +10,6 @@ jobs:
     - name: Install dependencies
       run: |
         make build-tools
+    - name: Install go
+      run: |
+        make install
