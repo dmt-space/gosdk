@@ -1,10 +1,12 @@
-name: build
+name: gosdk
 on: [push]
 jobs:
-  check-bats-version:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v1
-      - run: go get github.com/0chain/gosdk
-      - run: go build -o sdkversion sdkversion.go
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v1
+    # Install all the dependencies
+    - name: Install dependencies
+      run: |
+        make build-tools
