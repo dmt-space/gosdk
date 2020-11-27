@@ -35,3 +35,18 @@ jobs:
    steps:
    - name: Checkout code
      uses: actions/checkout@v2
+   - name: Create sdkfile
+     run: |
+       cat <<EOF >>sdkversion.go
+        package main
+
+          import (
+              "fmt"
+
+              "github.com/0chain/gosdk/zcncore"
+          )
+
+          func main() {
+              fmt.Println("gosdk version: ", zcncore.GetVersion())
+          }
+        EOF
