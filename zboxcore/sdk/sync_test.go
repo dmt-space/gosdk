@@ -143,10 +143,13 @@ func blobberResponseFormBodyCheck(param map[string]string, r *http.Request) bool
 func setupBlobberMockResponses(t *testing.T, blobbers []*mock.Blobber, dirPath, testCaseName string, checks ...func(params map[string]string, r *http.Request) bool) {
 	var blobberHTTPMocks []*httpMockDefinition
 	parseFileContent(t, fmt.Sprintf("%v/blobbers_response__%v.json", dirPath, testCaseName), &blobberHTTPMocks)
+	var mapBlobberHTTPMocks = make(map[string]*httpMockDefinition, len(blobberHTTPMocks))
 	for _, blobberHTTPMock := range blobberHTTPMocks {
+		mapBlobberHTTPMocks[blobberHTTPMock.Method + " " + blobberHTTPMock.Path] = blobberHTTPMock
+	}
 		blobberMockHandler := func(blobberIdx int) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
-				if strings.ToLower(r.Method) == strings.ToLower(blobberHTTPMock.Method) {
+				if blobberHTTPMock := mapBlobberHTTPMocks[r.Method + " " + r.URL.Path]; blobberHTTPMock != nil {
 					for paramIdx, param := range blobberHTTPMock.Params {
 						var matchesParam = true
 						for _, check := range checks {
@@ -178,10 +181,12 @@ func setupBlobberMockResponses(t *testing.T, blobbers []*mock.Blobber, dirPath, 
 				return
 			}
 		}
+
 		for idx, blobber := range blobbers {
-			blobber.SetHandler(t, blobberHTTPMock.Path, blobberMockHandler(idx))
+			for _, blobberMock := range blobberHTTPMocks {
+				blobber.SetHandler(t, blobberMock.Path, blobberMockHandler(idx))
+			}
 		}
-	}
 }
 
 func setupExpectedResult(t *testing.T, syncTestDir, testCaseName string) []FileDiff {
