@@ -3,13 +3,15 @@ package sdk
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/0chain/gosdk/core/common"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/sdk/mock"
 	"github.com/stretchr/testify/assert"
 	tm "github.com/stretchr/testify/mock"
-	"strings"
-	"testing"
 )
 
 const (
@@ -1113,6 +1115,1105 @@ func TestAllocation_downloadFile(t *testing.T) {
 				return
 			}
 			assertion.NoErrorf(err, "Unexpected error: %v", err)
+		})
+	}
+}
+
+func TestAllocation_DeleteFile(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/DeleteFile", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.DeleteFile(tt.args.path)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestAllocation_UpdateObjectAttributes(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path  string
+		attrs fileref.Attributes
+	}
+
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		
+		{
+			"Test_Invalid_Path",
+			args{
+				"",
+				fileref.Attributes{WhoPaysForReads: common.WhoPaysOwner},
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Is_Remote_Abs_Path",
+			args{
+				"abc",
+				fileref.Attributes{WhoPaysForReads: common.WhoPaysOwner},
+			},
+			nil,
+			true,
+		},
+
+		{
+			"Test_Who_Pay_For_Read_Owner_Success",
+			args{
+				"/1.txt",
+				fileref.Attributes{WhoPaysForReads: common.WhoPaysOwner},
+			},
+			nil,
+			false,
+		},
+		{
+			"Test_Who_Pay_For_Read_3rd_Party_Success",
+			args{
+				"/1.txt",
+				fileref.Attributes{WhoPaysForReads: common.WhoPays3rdParty},
+			},
+			nil,
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/UpdateObjectAttributes", tt.name)
+			err := a.UpdateObjectAttributes(tt.args.path, tt.args.attrs)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestAllocation_MoveObject(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path     string
+		destPath string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				path:     "/1.txt",
+				destPath: "/a/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = true
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/MoveObject", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.MoveObject(tt.args.path, tt.args.destPath)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestAllocation_CopyObject(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path     string
+		destPath string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				path:     "/1.txt",
+				destPath: "/a/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Local_Path_Failed",
+			args{
+				path:     "",
+				destPath: "",
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Is_Remote_Abs_Path",
+			args{
+				path:     "abc",
+				destPath: "/1.txt",
+			},
+			nil,
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/CopyObject", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.CopyObject(tt.args.path, tt.args.destPath)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_RenameObject(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path     string
+		destPath string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				path:     "/1.txt",
+				destPath: "/a/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				path:     "/1.txt",
+				destPath: "/a/1.txt",
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Local_Path_Failed",
+			args{
+				path:     "",
+				destPath: "",
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Is_Remote_Abs_Path",
+			args{
+				path:     "abc",
+				destPath: "/1.txt",
+			},
+			nil,
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/RenameObject", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.RenameObject(tt.args.path, tt.args.destPath)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_AddCollaborator(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		filePath       string
+		collaboratorID string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				filePath:       "/1.txt",
+				collaboratorID: "123",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				filePath:       "/1.txt",
+				collaboratorID: "123",
+			},
+			nil,
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/AddCollaborator", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.AddCollaborator(tt.args.filePath, tt.args.collaboratorID)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_RemoveCollaborator(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		filePath       string
+		collaboratorID string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				filePath:       "/1.txt",
+				collaboratorID: "123",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				filePath:       "/1.txt",
+				collaboratorID: "123",
+			},
+			nil,
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/RemoveCollaborator", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.RemoveCollaborator(tt.args.filePath, tt.args.collaboratorID)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_GetFileStats(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				path: "/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				path: "/1.txt",
+			},
+			nil,
+			false,
+		},
+		{
+			"Test_Invalid_Path",
+			args{
+				path: "",
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Is_Remote_Abs_Path",
+			args{
+				path: "x",
+			},
+			nil,
+			true,
+		},
+		// {
+		// 	"Test_File_Stats_Failed",
+		// 	args{
+		// 		path:       "/x",
+		// 	},
+		// 	nil,
+		// 	false,
+		// },
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/GetFileStats", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			_, err := a.GetFileStats(tt.args.path)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_GetFileMeta(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				path: "/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				path: "/1.txt",
+			},
+			nil,
+			true,
+		},
+		
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/GetFileMeta", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			_, err := a.GetFileMeta(tt.args.path)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_GetAuthTicketForShare(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		path            string
+		filename        string
+		referenceType   string
+		refereeClientID string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				path: "/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				path:            "/1.txt",
+				filename:        "1.txt",
+				referenceType:   "",
+				refereeClientID: "",
+			},
+			nil,
+			false,
+		},
+		{
+			"Test_Invalid_Path",
+			args{
+				path:            "",
+				filename:        "1.txt",
+				referenceType:   "",
+				refereeClientID: "",
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Is_Remote_Abs_Path",
+			args{
+				path:            "x",
+				filename:        "1.txt",
+				referenceType:   "",
+				refereeClientID: "",
+			},
+			nil,
+			true,
+		},
+	
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/GetAuthTicketForShare", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			_, err := a.GetAuthTicketForShare(tt.args.path, tt.args.filename, tt.args.referenceType, tt.args.refereeClientID)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_CancelUpload(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		localpath string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				localpath: "/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/CancelUpload", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.CancelUpload(tt.args.localpath)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_CancelDownload(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		localpath string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Pass",
+			args{
+				localpath: "/1.txt",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/CancelDownload", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.CancelDownload(tt.args.localpath)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_CommitFolderChange(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		operation,preValue,currValue string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{
+				operation: "/1.txt",
+				preValue:"test",
+				currValue:"test",
+			},
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.initialized = true
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+	
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/CommitFolderChange", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			_,err := a.CommitFolderChange(tt.args.operation,tt.args.preValue,tt.args.currValue)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+func TestAllocation_ListDirFromAuthTicket(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	type args struct {
+		authTicket,lookupHash string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		// TODO: Add test cases.
+		// {
+		// 	"Test_Uninitialized_Failed",
+		// 	args{
+		// 		authTicket: "eyJjbGllbnRfaWQiOiIiLCJvd25lcl9pZCI6ImJkYmUzYTNlNzlhYTU5OWU3ZTg1MmVlYzQwY2Y3MmIyNDFiOTM0NTBiMDY5NjQzZDkwY2JiNzRlZWQ0YjRiYjUiLCJhbGxvY2F0aW9uX2lkIjoiZDZhMDZhNmMwOTczMzJkMzUxOTA4ZTZiODkzZThkMjFkYTVlOTliZmE0ODY0ODA2NWFmMTk4MTczZjMwNGIwZiIsImZpbGVfcGF0aF9oYXNoIjoiY2I4ODAzM2RlYTJjYTU2NzhkYzVhNmIyNzg0NGFjNTY5Njk3NDIxMDc0OTlkYTZhZDAxMzMwZDlkYjQxZTJlMiIsImZpbGVfbmFtZSI6IjEudHh0IiwicmVmZXJlbmNlX3R5cGUiOiJmIiwiZXhwaXJhdGlvbiI6MTYyMDI3MTk1NCwidGltZXN0YW1wIjoxNjEyNDk1OTU0LCJyZV9lbmNyeXB0aW9uX2tleSI6IiIsInNpZ25hdHVyZSI6IjNiNGNlNzhjOGZkNWM5MDAwZjUyZTM4NzQzOTM2MjEyNjQxMmFhYzVjNTNkYmUxZjk2ODY2YmUyMTMwYzU5OGIifQ==",
+		// 		lookupHash:"cb88033dea2ca5678dc5a6b27844ac56969742107499da6ad01330d9db41e2e2",
+				
+		// 	},
+		// 	func(t *testing.T) (teardown func(t *testing.T)) {
+		// 		a.initialized = true
+		// 		return func(t *testing.T) {
+		// 			a.initialized = true
+		// 		}
+		// 	},
+		// 	false,
+		// },
+	
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/ListDirFromAuthTicket", tt.name)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			_,err := a.ListDirFromAuthTicket(tt.args.authTicket,tt.args.lookupHash)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
 		})
 	}
 }
