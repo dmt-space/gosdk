@@ -121,6 +121,7 @@ func (commitreq *CommitRequest) processCommit() {
 			Logger.Error("Ref path response : ", resp.StatusCode)
 		}
 		resp_body, err := ioutil.ReadAll(resp.Body)
+		Logger.Info(req.Method, " ", req.URL.Port(), " Ref path Result: ", string(resp_body))
 		if err != nil {
 			Logger.Error("Ref path: Resp", err)
 			return err
@@ -256,6 +257,7 @@ func (req *CommitRequest) commitBlobber(rootRef *fileref.Ref, latestWM *marker.W
 			Logger.Error("Response read: ", err)
 			return err
 		}
+		Logger.Debug(httpreq.Method, " ", httpreq.URL.Port(), " commit result: ", string(resp_body))
 		if resp.StatusCode != http.StatusOK {
 			Logger.Error(req.blobber.Baseurl, " Commit response:", string(resp_body))
 			return common.NewError("commit_error", string(resp_body))

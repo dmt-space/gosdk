@@ -116,9 +116,9 @@ type httpMockResponseDefinition struct {
 }
 
 type httpMockDefinition struct {
-	Method    string                     `json:"method"`
-	Path      string                     `json:"path"`
-	Params    []map[string]string        `json:"params"`
+	Method    string                          `json:"method"`
+	Path      string                          `json:"path"`
+	Params    []map[string]string             `json:"params"`
 	Responses [][]*httpMockResponseDefinition `json:"responses"`
 }
 
@@ -145,48 +145,48 @@ func setupBlobberMockResponses(t *testing.T, blobbers []*mock.Blobber, dirPath, 
 	parseFileContent(t, fmt.Sprintf("%v/blobbers_response__%v.json", dirPath, testCaseName), &blobberHTTPMocks)
 	var mapBlobberHTTPMocks = make(map[string]*httpMockDefinition, len(blobberHTTPMocks))
 	for _, blobberHTTPMock := range blobberHTTPMocks {
-		mapBlobberHTTPMocks[blobberHTTPMock.Method + " " + blobberHTTPMock.Path] = blobberHTTPMock
+		mapBlobberHTTPMocks[blobberHTTPMock.Method+" "+blobberHTTPMock.Path] = blobberHTTPMock
 	}
-		blobberMockHandler := func(blobberIdx int) http.HandlerFunc {
-			return func(w http.ResponseWriter, r *http.Request) {
-				if blobberHTTPMock := mapBlobberHTTPMocks[r.Method + " " + r.URL.Path]; blobberHTTPMock != nil {
-					for paramIdx, param := range blobberHTTPMock.Params {
-						var matchesParam = true
-						for _, check := range checks {
-							if !check(param, r) {
-								matchesParam = false
-								break
-							}
-						}
-
-						if matchesParam {
-							respBytes, err := json.Marshal(blobberHTTPMock.Responses[paramIdx][blobberIdx].Body)
-							assert.NoErrorf(t, err, "Error json.Marshal() cannot marshal blobber's response: %v", err)
-							respStr := string(respBytes)
-							for replacingIdx, replacingBlobber := range blobbers {
-								respStr = strings.ReplaceAll(respStr, blobberIDMask(replacingIdx+1), replacingBlobber.ID)
-								respStr = strings.ReplaceAll(respStr, blobberURLMask(replacingIdx+1), replacingBlobber.URL)
-							}
-
-							w.WriteHeader(blobberHTTPMock.Responses[paramIdx][blobberIdx].StatusCode)
-							w.Write([]byte(respStr))
-							return
+	blobberMockHandler := func(blobberIdx int) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if blobberHTTPMock := mapBlobberHTTPMocks[r.Method+" "+r.URL.Path]; blobberHTTPMock != nil {
+				for paramIdx, param := range blobberHTTPMock.Params {
+					var matchesParam = true
+					for _, check := range checks {
+						if !check(param, r) {
+							matchesParam = false
+							break
 						}
 					}
+
+					if matchesParam {
+						respBytes, err := json.Marshal(blobberHTTPMock.Responses[paramIdx][blobberIdx].Body)
+						assert.NoErrorf(t, err, "Error json.Marshal() cannot marshal blobber's response: %v", err)
+						respStr := string(respBytes)
+						for replacingIdx, replacingBlobber := range blobbers {
+							respStr = strings.ReplaceAll(respStr, blobberIDMask(replacingIdx+1), replacingBlobber.ID)
+							respStr = strings.ReplaceAll(respStr, blobberURLMask(replacingIdx+1), replacingBlobber.URL)
+						}
+
+						w.WriteHeader(blobberHTTPMock.Responses[paramIdx][blobberIdx].StatusCode)
+						w.Write([]byte(respStr))
+						return
+					}
 				}
-
-				t.Logf("Warning blobber response is not initialized for %v", r.URL.String())
-				w.WriteHeader(500)
-				w.Write([]byte("Internal Server Error."))
-				return
 			}
-		}
 
-		for idx, blobber := range blobbers {
-			for _, blobberMock := range blobberHTTPMocks {
-				blobber.SetHandler(t, blobberMock.Path, blobberMockHandler(idx))
-			}
+			t.Logf("Warning blobber response is not initialized for %v", r.URL.String())
+			w.WriteHeader(500)
+			w.Write([]byte("Internal Server Error."))
+			return
 		}
+	}
+
+	for idx, blobber := range blobbers {
+		for _, blobberMock := range blobberHTTPMocks {
+			blobber.SetHandler(t, blobberMock.Path, blobberMockHandler(idx))
+		}
+	}
 }
 
 func setupExpectedResult(t *testing.T, syncTestDir, testCaseName string) []FileDiff {
