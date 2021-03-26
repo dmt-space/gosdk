@@ -19,6 +19,7 @@ const (
 	configDir   = "test"
 	syncTestDir = configDir + "/" + "sync"
 	syncDir     = syncTestDir + "/" + "sync_alloc"
+	textPlainContentType = "text/plain"
 )
 
 func blobberIDMask(idx int) string {
@@ -78,7 +79,7 @@ func setupMockInitStorageSDK(t *testing.T, configDir string, minerHTTPMockURLs, 
 		var close func()
 		blockWorker, close = mock.NewBlockWorkerHTTPServer(t, minerHTTPMockURLs, sharderHTTPMockURLs)
 		defer close()
-		if blobberHTTPMockURLs != nil {
+		if blobberHTTPMockURLs != nil && len(blobberHTTPMockURLs) > 0 {
 			preferredBlobbers = blobberHTTPMockURLs
 		}
 	}
@@ -89,12 +90,14 @@ func setupMockInitStorageSDK(t *testing.T, configDir string, minerHTTPMockURLs, 
 
 func setupMockAllocation(t *testing.T, dirPath string, blobberMocks []*mock.Blobber) *Allocation {
 	blobbers := []*blockchain.StorageNode{}
-	for _, blobberMock := range blobberMocks {
-		if blobberMock != nil {
-			blobbers = append(blobbers, &blockchain.StorageNode{
-				ID:      blobberMock.ID,
-				Baseurl: blobberMock.URL,
-			})
+	if blobberMocks != nil {
+		for _, blobberMock := range blobberMocks {
+			if blobberMock != nil {
+				blobbers = append(blobbers, &blockchain.StorageNode{
+					ID:      blobberMock.ID,
+					Baseurl: blobberMock.URL,
+				})
+			}
 		}
 	}
 	var allocation *Allocation
@@ -113,6 +116,7 @@ func setupMockAllocation(t *testing.T, dirPath string, blobberMocks []*mock.Blob
 type httpMockResponseDefinition struct {
 	StatusCode int         `json:"status"`
 	Body       interface{} `json:"body"`
+	ContentType string `json:"content_type,omitempty"`
 }
 
 type httpMockDefinition struct {
@@ -160,6 +164,16 @@ func setupBlobberMockResponses(t *testing.T, blobbers []*mock.Blobber, dirPath, 
 					}
 
 					if matchesParam {
+						if blobberHTTPMock.Responses[paramIdx][blobberIdx].ContentType == textPlainContentType {
+							w.WriteHeader(blobberHTTPMock.Responses[paramIdx][blobberIdx].StatusCode)
+							body := fmt.Sprintf("%v", blobberHTTPMock.Responses[paramIdx][blobberIdx].Body)
+							if body == "" {
+								w.Write([]byte("."))
+								return
+							}
+							w.Write([]byte(body))
+							return
+						}
 						respBytes, err := json.Marshal(blobberHTTPMock.Responses[paramIdx][blobberIdx].Body)
 						assert.NoErrorf(t, err, "Error json.Marshal() cannot marshal blobber's response: %v", err)
 						respStr := string(respBytes)
@@ -538,8 +552,8 @@ func TestAllocation_SaveRemoteSnapshot(t *testing.T) {
 			} else {
 				assert.NoError(t, err, "expected no error")
 				expectedFileContentBytes := parseFileContent(t, fmt.Sprintf("%v/%v/expected_result__%v.json", syncTestDir, "SaveRemoteSnapshot", tt.name), nil)
-				savedDileContentBytes := parseFileContent(t, pathToSave, nil)
-				assert.EqualValues(t, expectedFileContentBytes, savedDileContentBytes)
+				savedFileContentBytes := parseFileContent(t, pathToSave, nil)
+				assert.EqualValues(t, expectedFileContentBytes, savedFileContentBytes)
 			}
 		})
 	}

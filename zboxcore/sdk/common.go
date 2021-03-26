@@ -37,7 +37,6 @@ func getObjectTreeFromBlobber(ctx context.Context, allocationID, allocationTx st
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("Object tree error response: Status: %d - %s ", resp.StatusCode, string(resp_body))
 		} else {
-			Logger.Info(httpreq.Method, " ", httpreq.URL.Port(), " Object tree:", string(resp_body))
 			err = json.Unmarshal(resp_body, &lR)
 			if err != nil {
 				Logger.Error("Object tree json decode error: ", err)

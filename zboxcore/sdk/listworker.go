@@ -143,7 +143,6 @@ func (req *ListRequest) getlistFromBlobbers() []*listResponse {
 func (req *ListRequest) GetListFromBlobbers() *ListResult {
 	lR := req.getlistFromBlobbers()
 	var result *ListResult
-	result = &ListResult{}
 	selected := make(map[string]*ListResult)
 	childResultMap := make(map[string]*ListResult)
 	for i := 0; i < len(lR); i++ {
@@ -152,7 +151,9 @@ func (req *ListRequest) GetListFromBlobbers() *ListResult {
 		if ti.err != nil || ti.ref == nil {
 			continue
 		}
-
+		if result == nil {
+			result = &ListResult{}
+		}
 		result.Name = ti.ref.Name
 		result.Path = ti.ref.Path
 		result.Type = ti.ref.Type

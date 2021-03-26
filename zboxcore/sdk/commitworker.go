@@ -117,19 +117,15 @@ func (commitreq *CommitRequest) processCommit() {
 			return err
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			Logger.Error("Ref path response : ", resp.StatusCode)
-		}
 		resp_body, err := ioutil.ReadAll(resp.Body)
-		Logger.Info(req.Method, " ", req.URL.Port(), " Ref path Result: ", string(resp_body))
 		if err != nil {
-			Logger.Error("Ref path: Resp", err)
+			Logger.Error("Ref path response: ", err)
 			return err
 		}
 		if resp.StatusCode != http.StatusOK {
+			Logger.Error("Ref path response: ", resp.StatusCode)
 			return fmt.Errorf("Reference path error response: Status: %d - %s ", resp.StatusCode, string(resp_body))
 		} else {
-			//Logger.Info("Reference path:", string(resp_body))
 			err = json.Unmarshal(resp_body, &lR)
 			if err != nil {
 				Logger.Error("Reference path json decode error: ", err)

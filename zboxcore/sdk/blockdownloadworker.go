@@ -196,6 +196,10 @@ func (req *BlockDownloadRequest) downloadBlobberBlock() {
 				// if err != nil {
 				// 	return fmt.Errorf("[%d] Read error:%s\n", req.blobberIdx, err.Error())
 				// }
+
+				Logger.Debug(httpreq.Method, " download block: ",httpreq.URL)
+				Logger.Debug(" download block result ",string(response))
+
 				var rspData downloadBlock
 				rspData.idx = req.blobberIdx
 				// dec := json.NewDecoder(resp.Body)
