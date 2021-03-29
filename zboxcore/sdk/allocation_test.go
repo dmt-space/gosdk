@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/gosdk/core/common"
@@ -77,6 +78,33 @@ func TestPriceRange_IsValid(t *testing.T) {
 			check(got)
 		})
 	}
+}
+
+func TestAllocation_InitAllocation(t *testing.T) {
+	a := Allocation{}
+	a.InitAllocation()
+	assert.New(t).NotZero(a)
+}
+
+func TestAllocation_dispatchWork(t *testing.T) {
+	a := Allocation{DataShards: 2, ParityShards: 2, uploadChan: make(chan *UploadRequest), downloadChan: make(chan *DownloadRequest), repairChan: make(chan *RepairRequest)}
+	t.Run("Test_Cover_Context_Canceled", func(t *testing.T) {
+		ctx, cancelFn := context.WithCancel(context.Background())
+		go a.dispatchWork(ctx)
+		cancelFn()
+	})
+	t.Run("Test_Cover_Upload_Request", func(t *testing.T) {
+		go a.dispatchWork(context.Background())
+		a.uploadChan <- &UploadRequest{file: []*fileref.FileRef{}, filemeta: &UploadFileMeta{}}
+	})
+	t.Run("Test_Cover_Download_Request", func(t *testing.T) {
+		go a.dispatchWork(context.Background())
+		a.downloadChan <- &DownloadRequest{}
+	})
+	t.Run("Test_Cover_Repair_Request", func(t *testing.T) {
+		go a.dispatchWork(context.Background())
+		a.repairChan <- &RepairRequest{listDir: &ListResult{}}
+	})
 }
 
 func TestAllocation_GetStats(t *testing.T) {
@@ -326,7 +354,9 @@ func TestAllocation_RepairFile(t *testing.T) {
 					scm.Test(t)
 					scm.On("Started", a.ID, "/1.txt", tm.Anything, tm.Anything).Maybe()
 					scm.On("InProgress", a.ID, "/1.txt", tm.Anything, tm.Anything, tm.Anything).Maybe()
-					scm.On("Error", a.ID, "/1.txt", tm.Anything, tm.Anything).Maybe()
+					scm.On("Error", a.ID, "/1.txt", tm.Anything, tm.Anything).Run(func(args tm.Arguments) {
+						t.Error(args...)
+					}).Maybe()
 					scm.On("Completed", a.ID, "/1.txt", tm.Anything, tm.Anything, tm.Anything).Maybe()
 					scm.AssertExpectations(t)
 					return scm
@@ -788,6 +818,26 @@ func TestAllocation_uploadOrUpdateFile(t *testing.T) {
 			},
 			true,
 		},
+		{
+			"Test_Upload_Success",
+			func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
+				willReturnCommitResult(&CommitResult{Success: true})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
+			args{
+				localPath:     localPath,
+				remotePath:    "/",
+				status:        status,
+				isUpdate:      false,
+				thumbnailPath: "",
+				encryption:    false,
+				isRepair:      false,
+				attrs:         fileref.Attributes{},
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1209,6 +1259,7 @@ func TestAllocation_DeleteFile(t *testing.T) {
 	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
 	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	willReturnCommitResult(&CommitResult{Success: true})
 	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/DeleteFile", "TestAllocation_DeleteFile")
 	assertion := assert.New(t)
 	err := a.DeleteFile("/1.txt")
@@ -1279,7 +1330,15 @@ func TestAllocation_deleteFile(t *testing.T) {
 		{
 			"Test_Success",
 			args{path: "/1.txt"},
-			blobbersResponseMock,
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testCaseName)
+				willReturnCommitResult(&CommitResult{
+					Success: true,
+				})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
 			false,
 		},
 	}
@@ -1381,7 +1440,13 @@ func TestAllocation_UpdateObjectAttributes(t *testing.T) {
 				"/1.txt",
 				fileref.Attributes{WhoPaysForReads: common.WhoPaysOwner},
 			},
-			blobbersResponseMock,
+			func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testcaseName)
+				willReturnCommitResult(&CommitResult{Success: true})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
 			false,
 		},
 		{
@@ -1390,7 +1455,13 @@ func TestAllocation_UpdateObjectAttributes(t *testing.T) {
 				"/1.txt",
 				fileref.Attributes{WhoPaysForReads: common.WhoPays3rdParty},
 			},
-			blobbersResponseMock,
+			func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testcaseName)
+				willReturnCommitResult(&CommitResult{Success: true})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
 			false,
 		},
 	}
@@ -1476,8 +1547,16 @@ func TestAllocation_MoveObject(t *testing.T) {
 				path:     "/1.txt",
 				destPath: "/d",
 			},
-			blobbersResponseMock,
-			true,
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testCaseName)
+				willReturnCommitResult(&CommitResult{
+					Success: true,
+				})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
+			false,
 		},
 	}
 
@@ -1573,7 +1652,15 @@ func TestAllocation_CopyObject(t *testing.T) {
 				path:     "/1.txt",
 				destPath: "/d",
 			},
-			blobbersResponseMock,
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testCaseName)
+				willReturnCommitResult(&CommitResult{
+					Success: true,
+				})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
 			false,
 		},
 	}
@@ -1670,7 +1757,15 @@ func TestAllocation_RenameObject(t *testing.T) {
 				path:     "/1.txt",
 				destName: "/2.txt",
 			},
-			blobbersResponseMock,
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testCaseName)
+				willReturnCommitResult(&CommitResult{
+					Success: true,
+				})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
 			false,
 		},
 	}
@@ -2351,7 +2446,7 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           args
-		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
 		wantErr        bool
 	}{
 		{
@@ -2361,7 +2456,7 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 				preValue:  "test",
 				currValue: "test",
 			},
-			func(t *testing.T) (teardown func(t *testing.T)) {
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
 				a.initialized = false
 				return func(t *testing.T) {
 					a.initialized = true
@@ -2376,7 +2471,7 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 			assertion := assert.New(t)
 			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/CommitFolderChange", tt.name)
 			if tt.additionalMock != nil {
-				if teardown := tt.additionalMock(t); teardown != nil {
+				if teardown := tt.additionalMock(t, tt.name); teardown != nil {
 					defer teardown(t)
 				}
 			}
@@ -2933,7 +3028,7 @@ func TestAllocation_DownloadThumbnailFromAuthTicket(t *testing.T) {
 	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
 	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
-	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+ "/DownloadThumbnailFromAuthTicket", "TestAllocation_DownloadThumbnailFromAuthTicket")
+	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/DownloadThumbnailFromAuthTicket", "TestAllocation_DownloadThumbnailFromAuthTicket")
 	assertion := assert.New(t)
 	var authTicket, err = a.GetAuthTicket("/1.txt", "1.txt", fileref.FILE, client.GetClientID(), "")
 	assertion.NoErrorf(err, "unexpected get auth ticket error: %v", err)
@@ -2947,7 +3042,7 @@ func TestAllocation_DownloadThumbnailFromAuthTicket(t *testing.T) {
 	statusCallback.On("Completed", a.ID, lookupHash, tm.Anything, tm.Anything, tm.Anything).Maybe()
 	statusCallback.AssertExpectations(t)
 	err = a.DownloadThumbnailFromAuthTicket(allocationTestDir+"/DownloadThumbnailFromAuthTicket/alloc", authTicket, lookupHash, "1.txt", true, statusCallback)
-	defer os.Remove(allocationTestDir+"/DownloadThumbnailFromAuthTicket/alloc/1.txt")
+	defer os.Remove(allocationTestDir + "/DownloadThumbnailFromAuthTicket/alloc/1.txt")
 	assertion.NoErrorf(err, "unexpected error: %v", err)
 }
 
@@ -2974,7 +3069,7 @@ func TestAllocation_DownloadFromAuthTicket(t *testing.T) {
 	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
 	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
-	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+ "/DownloadFromAuthTicket", "TestAllocation_DownloadFromAuthTicket")
+	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/DownloadFromAuthTicket", "TestAllocation_DownloadFromAuthTicket")
 	assertion := assert.New(t)
 	var authTicket, err = a.GetAuthTicket("/1.txt", "1.txt", fileref.FILE, client.GetClientID(), "")
 	assertion.NoErrorf(err, "unexpected get auth ticket error: %v", err)
@@ -2988,7 +3083,7 @@ func TestAllocation_DownloadFromAuthTicket(t *testing.T) {
 	statusCallback.On("Completed", a.ID, lookupHash, tm.Anything, tm.Anything, tm.Anything).Maybe()
 	statusCallback.AssertExpectations(t)
 	err = a.DownloadFromAuthTicket(allocationTestDir+"/DownloadFromAuthTicket/alloc", authTicket, lookupHash, "1.txt", true, statusCallback)
-	defer os.Remove(allocationTestDir+"/DownloadFromAuthTicket/alloc/1.txt")
+	defer os.Remove(allocationTestDir + "/DownloadFromAuthTicket/alloc/1.txt")
 	assertion.NoErrorf(err, "unexpected error: %v", err)
 }
 
@@ -3015,7 +3110,7 @@ func TestAllocation_DownloadFromAuthTicketByBlocks(t *testing.T) {
 	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
 	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
-	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+ "/DownloadFromAuthTicketByBlocks", "TestAllocation_DownloadFromAuthTicketByBlocks")
+	setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/DownloadFromAuthTicketByBlocks", "TestAllocation_DownloadFromAuthTicketByBlocks")
 	assertion := assert.New(t)
 	var authTicket, err = a.GetAuthTicket("/1.txt", "1.txt", fileref.FILE, client.GetClientID(), "")
 	assertion.NoErrorf(err, "unexpected get auth ticket error: %v", err)
@@ -3028,8 +3123,8 @@ func TestAllocation_DownloadFromAuthTicketByBlocks(t *testing.T) {
 	statusCallback.On("Error", a.ID, lookupHash, tm.Anything, tm.Anything).Maybe()
 	statusCallback.On("Completed", a.ID, lookupHash, tm.Anything, tm.Anything, tm.Anything).Maybe()
 	statusCallback.AssertExpectations(t)
-	err = a.DownloadFromAuthTicketByBlocks(allocationTestDir+"/DownloadFromAuthTicketByBlocks/alloc", authTicket, 1, 0, numBlockDownloads,lookupHash, "1.txt", true, statusCallback)
-	defer os.Remove(allocationTestDir+"/DownloadFromAuthTicketByBlocks/alloc/1.txt")
+	err = a.DownloadFromAuthTicketByBlocks(allocationTestDir+"/DownloadFromAuthTicketByBlocks/alloc", authTicket, 1, 0, numBlockDownloads, lookupHash, "1.txt", true, statusCallback)
+	defer os.Remove(allocationTestDir + "/DownloadFromAuthTicketByBlocks/alloc/1.txt")
 	assertion.NoErrorf(err, "unexpected error: %v", err)
 }
 
@@ -3082,10 +3177,10 @@ func TestAllocation_CommitMetaTransaction(t *testing.T) {
 		status        func(t *testing.T) StatusCallback
 	}
 	tests := []struct {
-		name    string
-		args    args
+		name           string
+		args           args
 		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
-		wantErr bool
+		wantErr        bool
 	}{
 		{
 			"Test_Uninitialized_Failed",
@@ -3166,5 +3261,169 @@ func TestAllocation_CommitMetaTransaction(t *testing.T) {
 }
 
 func TestAllocation_StartRepair(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
 
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+
+	var statusMock = func(t *testing.T) StatusCallback {
+		scm := &mock.StatusCallback{}
+		scm.Test(t)
+		scm.On("Started", a.ID, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.On("InProgress", a.ID, tm.Anything, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.On("Error", a.ID, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.On("Completed", a.ID, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.AssertExpectations(t)
+		return scm
+	}
+	var blobbersResponseMock = func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
+		setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/StartRepair", testcaseName)
+		return nil
+	}
+	var localPath = allocationTestDir + "/alloc/1.txt"
+
+	type args struct {
+		localPath, pathToRepair string
+		StatusCallbackMock      func(t *testing.T) StatusCallback
+	}
+	tests := []struct {
+		name string
+		args args
+		additionalMock func(t *testing.T, testCaseName string)	(teardown func(t *testing.T))
+		wantErr bool
+	}{
+		{
+		"Test_Uninitialized_Failed",
+			args{},
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_Cannot_Get_List_From_Blobbers_Failed",
+			args{
+				localPath:          localPath,
+				pathToRepair:       "/1.txt",
+				StatusCallbackMock: statusMock,
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_Repair_Success",
+			args{
+				localPath:          localPath,
+				pathToRepair:       "/1.txt",
+				StatusCallbackMock: statusMock,
+			},
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testCaseName)
+				willReturnCommitResult(&CommitResult{Success: true})
+				return func(t *testing.T) {
+					willReturnCommitResult(nil)
+				}
+			},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t, tt.name); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			var statusCallback StatusCallback
+			if tt.args.StatusCallbackMock != nil {
+				statusCallback = tt.args.StatusCallbackMock(t)
+			}
+
+			err := a.StartRepair(tt.args.localPath, tt.args.pathToRepair, statusCallback)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
+}
+
+func TestAllocation_CancelRepair(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	tests := []struct {
+		name           string
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
+		wantErr        bool
+	}{
+		{
+			"Test_Failed",
+			nil,
+			true,
+		},
+		{
+			"Test_Success",
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				a.repairRequestInProgress = &RepairRequest{}
+				return nil
+			},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertion := assert.New(t)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t); teardown != nil {
+					defer teardown(t)
+				}
+			}
+			err := a.CancelRepair()
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
+		})
+	}
 }

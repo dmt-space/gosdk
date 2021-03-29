@@ -225,15 +225,12 @@ func (a *Allocation) dispatchWork(ctx context.Context) {
 			Logger.Info("Upload cancelled by the parent")
 			return
 		case uploadReq := <-a.uploadChan:
-
 			Logger.Info(fmt.Sprintf("received a upload request for %v %v\n", uploadReq.filepath, uploadReq.remotefilepath))
 			go uploadReq.processUpload(ctx, a)
 		case downloadReq := <-a.downloadChan:
-
 			Logger.Info(fmt.Sprintf("received a download request for %v\n", downloadReq.remotefilepath))
 			go downloadReq.processDownload(ctx)
 		case repairReq := <-a.repairChan:
-
 			Logger.Info(fmt.Sprintf("received a repair request for %v\n", repairReq.listDir.Path))
 			go repairReq.processRepair(ctx, a)
 		}
@@ -385,7 +382,8 @@ func (a *Allocation) uploadOrUpdateFile(localpath string, remotepath string,
 		}
 
 		uploadReq.filemeta.Hash = fileRef.ActualFileHash
-		uploadReq.uploadMask = (^found & uploadReq.uploadMask)
+		uploadReq.uploadMask = ^found & uploadReq.uploadMask
+		fmt.Println(bits.TrailingZeros32(16))
 		uploadReq.fullconsensus = float32(bits.TrailingZeros32(uploadReq.uploadMask + 1))
 	}
 
@@ -687,8 +685,7 @@ func (a *Allocation) deleteFile(path string, threshConsensus, fullConsensus floa
 	req.deleteMask = 0
 	req.listMask = 0
 	req.connectionID = zboxutil.NewConnectionId()
-	err := req.ProcessDelete()
-	return err
+	return req.ProcessDelete()
 }
 
 func (a *Allocation) RenameObject(path string, destName string) error {

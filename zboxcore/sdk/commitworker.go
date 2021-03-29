@@ -81,7 +81,6 @@ func InitCommitWorker(blobbers []*blockchain.StorageNode) {
 			go startCommitWorker(blobberChan, blobber.ID)
 		}
 	}
-
 }
 
 func startCommitWorker(blobberChan chan *CommitRequest, blobberID string) {

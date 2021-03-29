@@ -1,12 +1,14 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/0chain/gosdk/zboxcore/blockchain"
@@ -16,9 +18,9 @@ import (
 )
 
 const (
-	configDir   = "test"
-	syncTestDir = configDir + "/" + "sync"
-	syncDir     = syncTestDir + "/" + "sync_alloc"
+	configDir            = "test"
+	syncTestDir          = configDir + "/" + "sync"
+	syncDir              = syncTestDir + "/" + "sync_alloc"
 	textPlainContentType = "text/plain"
 )
 
@@ -88,6 +90,12 @@ func setupMockInitStorageSDK(t *testing.T, configDir string, minerHTTPMockURLs, 
 	assert.NoErrorf(t, err, "Error InitStorageSDK(): %v", err)
 }
 
+var commitResultChan chan *CommitResult
+
+func willReturnCommitResult(c *CommitResult) {
+	commitResultChan <- c
+}
+
 func setupMockAllocation(t *testing.T, dirPath string, blobberMocks []*mock.Blobber) *Allocation {
 	blobbers := []*blockchain.StorageNode{}
 	if blobberMocks != nil {
@@ -109,14 +117,80 @@ func setupMockAllocation(t *testing.T, dirPath string, blobberMocks []*mock.Blob
 	err := json.Unmarshal(contentBytes, &allocation)
 	assert.NoErrorf(t, err, "Error json.Unmarshal() cannot parse file content to %T object: %v", allocation, err)
 	allocation.Blobbers = blobbers // inject mock blobbers
-	allocation.InitAllocation()
+	allocation.uploadChan = make(chan *UploadRequest, 10)
+	allocation.downloadChan = make(chan *DownloadRequest, 10)
+	allocation.repairChan = make(chan *RepairRequest, 1)
+	allocation.ctx, allocation.ctxCancelF = context.WithCancel(context.Background())
+	allocation.uploadProgressMap = make(map[string]*UploadRequest)
+	allocation.downloadProgressMap = make(map[string]*DownloadRequest)
+	allocation.mutex = &sync.Mutex{}
+
+	// init mock test commit worker
+	commitChan = make(map[string]chan *CommitRequest)
+	commitResultChan = make(chan *CommitResult)
+	var commitResult *CommitResult
+	for _, blobber := range blobbers {
+		if _, ok := commitChan[blobber.ID]; !ok {
+			commitChan[blobber.ID] = make(chan *CommitRequest, 1)
+			blobberChan := commitChan[blobber.ID]
+			go func(c <-chan *CommitRequest, blID string){
+				for true {
+					cm := <- c
+					cm.result = commitResult
+					cm.wg.Done()
+				}
+			}(blobberChan, blobber.ID)
+		}
+	}
+	// mock commit result
+	go func(){
+		for true {
+			commitResult = <- commitResultChan
+		}
+	}()
+
+	// init mock test dispatcher
+	go func() {
+		for true {
+			select {
+			case <-allocation.ctx.Done():
+				t.Log("Upload cancelled by the parent")
+				return
+			case uploadReq := <-allocation.uploadChan:
+				if uploadReq.completedCallback != nil {
+					uploadReq.completedCallback(uploadReq.filepath)
+				}
+				if uploadReq.wg != nil {
+					uploadReq.wg.Done()
+				}
+				t.Logf("received a upload request for %v %v\n", uploadReq.filepath, uploadReq.remotefilepath)
+			case downloadReq := <-allocation.downloadChan:
+				if downloadReq.completedCallback != nil {
+					downloadReq.completedCallback(downloadReq.remotefilepath, downloadReq.remotefilepathhash)
+				}
+				if downloadReq.wg != nil {
+					downloadReq.wg.Done()
+				}
+				t.Logf("received a download request for %v\n", downloadReq.remotefilepath)
+			case repairReq := <-allocation.repairChan:
+				if repairReq.completedCallback != nil {
+					repairReq.completedCallback()
+				}
+				if repairReq.wg != nil {
+					repairReq.wg.Done()
+				}
+				t.Logf("received a repair request for %v\n", repairReq.listDir.Path)
+			}
+		}
+	}()
+	allocation.initialized = true
 	return allocation
 }
 
 type httpMockResponseDefinition struct {
-	StatusCode int         `json:"status"`
-	Body       interface{} `json:"body"`
-	ContentType string `json:"content_type,omitempty"`
+	StatusCode  int         `json:"status"`
+	Body        interface{} `json:"body"`
+	ContentType string      `json:"content_type,omitempty"`
 }
 
 type httpMockDefinition struct {
