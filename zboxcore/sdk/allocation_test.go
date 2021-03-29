@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/gosdk/core/common"
@@ -13,9 +12,7 @@ import (
 	tm "github.com/stretchr/testify/mock"
 	"os"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 )
 
 const (
@@ -2043,9 +2040,29 @@ func TestAllocation_GetFileMeta(t *testing.T) {
 }
 
 func TestAllocation_GetAuthTicketForShare(t *testing.T) {
-	setupMockInitStorageSDK(t, configDir, nil, nil, nil)
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
-	a := setupMockAllocation(t, allocationTestDir, nil)
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+
 	assertion := assert.New(t)
 	at, err := a.GetAuthTicketForShare("/1.txt", "1.txt", fileref.FILE, client.GetClientID())
 	assertion.NotEmptyf(at, "unexpected empty auth ticket")
@@ -2176,10 +2193,23 @@ func TestAllocation_GetAuthTicket(t *testing.T) {
 }
 
 func TestAllocation_CancelUpload(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
 	// setup mock sdk
-	setupMockInitStorageSDK(t, configDir, nil, nil, nil)
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
-	a := setupMockAllocation(t, allocationTestDir, nil)
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
 	var localPath = allocationTestDir + "/alloc/1.txt"
 	type args struct {
 		localpath string
@@ -2228,10 +2258,23 @@ func TestAllocation_CancelUpload(t *testing.T) {
 }
 
 func TestAllocation_CancelDownload(t *testing.T) {
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
+	}
+
 	// setup mock sdk
-	setupMockInitStorageSDK(t, configDir, nil, nil, nil)
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
-	a := setupMockAllocation(t, allocationTestDir, nil)
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
 	var remotePath = "/1.txt"
 	type args struct {
 		remotepath string
@@ -2311,7 +2354,6 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 		additionalMock func(t *testing.T) (teardown func(t *testing.T))
 		wantErr        bool
 	}{
-		// TODO: Add test cases.
 		{
 			"Test_Uninitialized_Failed",
 			args{
@@ -2991,191 +3033,138 @@ func TestAllocation_DownloadFromAuthTicketByBlocks(t *testing.T) {
 	assertion.NoErrorf(err, "unexpected error: %v", err)
 }
 
+// TestAllocation_CommitMetaTransaction	- calling 3 dependence method: GetFileMeta, GetFileMetaFromAuthTicket and processCommitMetaRequest
+// Let's says both that method are all tested itself. So we can ignore the test on these method, just need to make sure the statement are able to covered
 func TestAllocation_CommitMetaTransaction(t *testing.T) {
-	type fields struct {
-		ID                      string
-		Tx                      string
-		DataShards              int
-		ParityShards            int
-		Size                    int64
-		Expiration              int64
-		Owner                   string
-		OwnerPublicKey          string
-		Payer                   string
-		Blobbers                []*blockchain.StorageNode
-		Stats                   *AllocationStats
-		TimeUnit                time.Duration
-		BlobberDetails          []*BlobberAllocation
-		ReadPriceRange          PriceRange
-		WritePriceRange         PriceRange
-		ChallengeCompletionTime time.Duration
-		StartTime               common.Timestamp
-		Finalized               bool
-		Canceled                bool
-		MovedToChallenge        common.Balance
-		MovedBack               common.Balance
-		MovedToValidators       common.Balance
-		numBlockDownloads       int
-		uploadChan              chan *UploadRequest
-		downloadChan            chan *DownloadRequest
-		repairChan              chan *RepairRequest
-		ctx                     context.Context
-		ctxCancelF              context.CancelFunc
-		mutex                   *sync.Mutex
-		uploadProgressMap       map[string]*UploadRequest
-		downloadProgressMap     map[string]*DownloadRequest
-		repairRequestInProgress *RepairRequest
-		initialized             bool
+	// setup mock miner, sharder and blobber http server
+	miner, closeMinerServer := mock.NewMinerHTTPServer(t)
+	defer closeMinerServer()
+	sharder, closeSharderServer := mock.NewSharderHTTPServer(t)
+	defer closeSharderServer()
+
+	var blobberMocks = []*mock.Blobber{}
+	var blobberNums = 4
+	for i := 0; i < blobberNums; i++ {
+		blobberIdx := mock.NewBlobberHTTPServer(t)
+		blobberMocks = append(blobberMocks, blobberIdx)
 	}
+
+	defer func() {
+		for _, blobberMock := range blobberMocks {
+			blobberMock.Close(t)
+		}
+	}()
+	// setup mock sdk
+	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
+	// setup mock allocation
+	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+
+	var statusMock = func(t *testing.T) StatusCallback {
+		scm := &mock.StatusCallback{}
+		scm.Test(t)
+		scm.On("Started", a.ID, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.On("InProgress", a.ID, tm.Anything, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.On("Error", a.ID, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.On("Completed", a.ID, tm.Anything, tm.Anything, tm.Anything).Maybe()
+		scm.AssertExpectations(t)
+		return scm
+	}
+
+	var authTicket, err = a.GetAuthTicket("/1.txt", "1.txt", fileref.FILE, client.GetClientID(), "")
+	assert.NoErrorf(t, err, "unexpected get auth ticket error: %v", err)
+	assert.NotEmptyf(t, authTicket, "unexpected auth ticket")
 	type args struct {
 		path          string
 		crudOperation string
 		authTicket    string
 		lookupHash    string
-		fileMeta      *ConsolidatedFileMeta
-		status        StatusCallback
+		fileMeta      func(t *testing.T, testCaseName string) *ConsolidatedFileMeta
+		status        func(t *testing.T) StatusCallback
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
+		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			"Test_Uninitialized_Failed",
+			args{},
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				a.initialized = false
+				return func(t *testing.T) {
+					a.initialized = true
+				}
+			},
+			true,
+		},
+		{
+			"Test_No_File_Meta_With_Path_Args_Failed",
+			args{
+				path:          "/1.txt",
+				crudOperation: "",
+				authTicket:    "",
+				lookupHash:    fileref.GetReferenceLookup(a.ID, "/1.txt"),
+				fileMeta:      nil,
+				status:        statusMock,
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_No_File_Meta_With_Auth_Ticket_Args_Failed",
+			args{
+				path:          "",
+				crudOperation: "",
+				authTicket:    authTicket,
+				lookupHash:    fileref.GetReferenceLookup(a.ID, "/1.txt"),
+				fileMeta:      nil,
+				status:        statusMock,
+			},
+			nil,
+			true,
+		},
+		{
+			"Test_No_File_Meta_With_No_Path_And_No_Auth_Ticket_Args_Coverage",
+			args{
+				path:          "",
+				crudOperation: "",
+				authTicket:    "",
+				lookupHash:    fileref.GetReferenceLookup(a.ID, "/1.txt"),
+				fileMeta:      nil,
+				status:        statusMock,
+			},
+			nil,
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &Allocation{
-				ID:                      tt.fields.ID,
-				Tx:                      tt.fields.Tx,
-				DataShards:              tt.fields.DataShards,
-				ParityShards:            tt.fields.ParityShards,
-				Size:                    tt.fields.Size,
-				Expiration:              tt.fields.Expiration,
-				Owner:                   tt.fields.Owner,
-				OwnerPublicKey:          tt.fields.OwnerPublicKey,
-				Payer:                   tt.fields.Payer,
-				Blobbers:                tt.fields.Blobbers,
-				Stats:                   tt.fields.Stats,
-				TimeUnit:                tt.fields.TimeUnit,
-				BlobberDetails:          tt.fields.BlobberDetails,
-				ReadPriceRange:          tt.fields.ReadPriceRange,
-				WritePriceRange:         tt.fields.WritePriceRange,
-				ChallengeCompletionTime: tt.fields.ChallengeCompletionTime,
-				StartTime:               tt.fields.StartTime,
-				Finalized:               tt.fields.Finalized,
-				Canceled:                tt.fields.Canceled,
-				MovedToChallenge:        tt.fields.MovedToChallenge,
-				MovedBack:               tt.fields.MovedBack,
-				MovedToValidators:       tt.fields.MovedToValidators,
-				numBlockDownloads:       tt.fields.numBlockDownloads,
-				uploadChan:              tt.fields.uploadChan,
-				downloadChan:            tt.fields.downloadChan,
-				repairChan:              tt.fields.repairChan,
-				ctx:                     tt.fields.ctx,
-				ctxCancelF:              tt.fields.ctxCancelF,
-				mutex:                   tt.fields.mutex,
-				uploadProgressMap:       tt.fields.uploadProgressMap,
-				downloadProgressMap:     tt.fields.downloadProgressMap,
-				repairRequestInProgress: tt.fields.repairRequestInProgress,
-				initialized:             tt.fields.initialized,
+			assertion := assert.New(t)
+			if tt.additionalMock != nil {
+				if teardown := tt.additionalMock(t, tt.name); teardown != nil {
+					defer teardown(t)
+				}
 			}
-			if err := a.CommitMetaTransaction(tt.args.path, tt.args.crudOperation, tt.args.authTicket, tt.args.lookupHash, tt.args.fileMeta, tt.args.status); (err != nil) != tt.wantErr {
-				t.Errorf("CommitMetaTransaction() error = %v, wantErr %v", err, tt.wantErr)
+
+			var fileMeta *ConsolidatedFileMeta
+			if tt.args.fileMeta != nil {
+				fileMeta = tt.args.fileMeta(t, tt.name)
 			}
+			var statusCallback StatusCallback
+			if tt.args.status != nil {
+				statusCallback = tt.args.status(t)
+			}
+			err := a.CommitMetaTransaction(tt.args.path, tt.args.crudOperation, tt.args.authTicket, tt.args.lookupHash, fileMeta, statusCallback)
+			if tt.wantErr {
+				assertion.Error(err, "expected error != nil")
+				return
+			}
+			assertion.NoErrorf(err, "unexpected error: %v", err)
 		})
 	}
 }
 
 func TestAllocation_StartRepair(t *testing.T) {
-	type fields struct {
-		ID                      string
-		Tx                      string
-		DataShards              int
-		ParityShards            int
-		Size                    int64
-		Expiration              int64
-		Owner                   string
-		OwnerPublicKey          string
-		Payer                   string
-		Blobbers                []*blockchain.StorageNode
-		Stats                   *AllocationStats
-		TimeUnit                time.Duration
-		BlobberDetails          []*BlobberAllocation
-		ReadPriceRange          PriceRange
-		WritePriceRange         PriceRange
-		ChallengeCompletionTime time.Duration
-		StartTime               common.Timestamp
-		Finalized               bool
-		Canceled                bool
-		MovedToChallenge        common.Balance
-		MovedBack               common.Balance
-		MovedToValidators       common.Balance
-		numBlockDownloads       int
-		uploadChan              chan *UploadRequest
-		downloadChan            chan *DownloadRequest
-		repairChan              chan *RepairRequest
-		ctx                     context.Context
-		ctxCancelF              context.CancelFunc
-		mutex                   *sync.Mutex
-		uploadProgressMap       map[string]*UploadRequest
-		downloadProgressMap     map[string]*DownloadRequest
-		repairRequestInProgress *RepairRequest
-		initialized             bool
-	}
-	type args struct {
-		localRootPath string
-		pathToRepair  string
-		statusCB      StatusCallback
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &Allocation{
-				ID:                      tt.fields.ID,
-				Tx:                      tt.fields.Tx,
-				DataShards:              tt.fields.DataShards,
-				ParityShards:            tt.fields.ParityShards,
-				Size:                    tt.fields.Size,
-				Expiration:              tt.fields.Expiration,
-				Owner:                   tt.fields.Owner,
-				OwnerPublicKey:          tt.fields.OwnerPublicKey,
-				Payer:                   tt.fields.Payer,
-				Blobbers:                tt.fields.Blobbers,
-				Stats:                   tt.fields.Stats,
-				TimeUnit:                tt.fields.TimeUnit,
-				BlobberDetails:          tt.fields.BlobberDetails,
-				ReadPriceRange:          tt.fields.ReadPriceRange,
-				WritePriceRange:         tt.fields.WritePriceRange,
-				ChallengeCompletionTime: tt.fields.ChallengeCompletionTime,
-				StartTime:               tt.fields.StartTime,
-				Finalized:               tt.fields.Finalized,
-				Canceled:                tt.fields.Canceled,
-				MovedToChallenge:        tt.fields.MovedToChallenge,
-				MovedBack:               tt.fields.MovedBack,
-				MovedToValidators:       tt.fields.MovedToValidators,
-				numBlockDownloads:       tt.fields.numBlockDownloads,
-				uploadChan:              tt.fields.uploadChan,
-				downloadChan:            tt.fields.downloadChan,
-				repairChan:              tt.fields.repairChan,
-				ctx:                     tt.fields.ctx,
-				ctxCancelF:              tt.fields.ctxCancelF,
-				mutex:                   tt.fields.mutex,
-				uploadProgressMap:       tt.fields.uploadProgressMap,
-				downloadProgressMap:     tt.fields.downloadProgressMap,
-				repairRequestInProgress: tt.fields.repairRequestInProgress,
-				initialized:             tt.fields.initialized,
-			}
-			if err := a.StartRepair(tt.args.localRootPath, tt.args.pathToRepair, tt.args.statusCB); (err != nil) != tt.wantErr {
-				t.Errorf("StartRepair() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+
 }
