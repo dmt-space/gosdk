@@ -164,7 +164,7 @@ func TestAllocation_GetBlobberStats(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assertion := assert.New(t)
-			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/"+"GetBlobberStats", tt.name, blobberResponseParamCheck)
+			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/"+"GetBlobberStats", tt.name, responseParamTypeCheck)
 			expectedBytes := parseFileContent(t, fmt.Sprintf("%v/%v/expected_result__%v.json", allocationTestDir, "GetBlobberStats", tt.name), nil)
 			expectedStr := string(expectedBytes)
 			for blobberIdx, blobber := range blobbers {
@@ -882,7 +882,7 @@ func TestAllocation_RepairRequired(t *testing.T) {
 	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
 
 	var blobberMockFn = func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
-		setupBlobberMockResponses(t, blobberMocks, fmt.Sprintf("%v/%v", allocationTestDir, "RepairRequired"), testcaseName, blobberResponseFormBodyCheck)
+		setupBlobberMockResponses(t, blobberMocks, fmt.Sprintf("%v/%v", allocationTestDir, "RepairRequired"), testcaseName, responseFormBodyTypeCheck)
 		return func(t *testing.T) {
 			for _, blobberMock := range blobberMocks {
 				blobberMock.ResetHandler(t)
@@ -2440,6 +2440,13 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 	setupMockInitStorageSDK(t, configDir, []string{miner}, []string{sharder}, []string{})
 	// setup mock allocation
 	a := setupMockAllocation(t, allocationTestDir, blobberMocks)
+	var minerResponseMocks = func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+		setupMinerMockResponses(t, []string{miner}, allocationTestDir+"/CommitFolderChange", testCaseName)
+		return nil
+	}
+	var sharderResponseMocks = func(t *testing.T, testCaseName string) {
+		setupSharderMockResponses(t, []string{sharder}, allocationTestDir+"/CommitFolderChange", testCaseName)
+	}
 	type args struct {
 		operation, preValue, currValue string
 	}
@@ -2451,11 +2458,7 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 	}{
 		{
 			"Test_Uninitialized_Failed",
-			args{
-				operation: "/1.txt",
-				preValue:  "test",
-				currValue: "test",
-			},
+			args{},
 			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
 				a.initialized = false
 				return func(t *testing.T) {
@@ -2464,12 +2467,31 @@ func TestAllocation_CommitFolderChange(t *testing.T) {
 			},
 			true,
 		},
+		{
+			"Test_Sharder_Verify_Txn_Failed",
+			args{},
+			minerResponseMocks,
+			true,
+		},
+		{
+			"Test_Success",
+			args{
+				operation: "Move",
+				preValue:  "/1.txt",
+				currValue: "/d/1.txt",
+			},
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				minerResponseMocks(t, testCaseName)
+				sharderResponseMocks(t, testCaseName)
+				return nil
+			},
+			false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assertion := assert.New(t)
-			setupBlobberMockResponses(t, blobberMocks, allocationTestDir+"/CommitFolderChange", tt.name)
 			if tt.additionalMock != nil {
 				if teardown := tt.additionalMock(t, tt.name); teardown != nil {
 					defer teardown(t)
@@ -3305,13 +3327,13 @@ func TestAllocation_StartRepair(t *testing.T) {
 		StatusCallbackMock      func(t *testing.T) StatusCallback
 	}
 	tests := []struct {
-		name string
-		args args
-		additionalMock func(t *testing.T, testCaseName string)	(teardown func(t *testing.T))
-		wantErr bool
+		name           string
+		args           args
+		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
+		wantErr        bool
 	}{
 		{
-		"Test_Uninitialized_Failed",
+			"Test_Uninitialized_Failed",
 			args{},
 			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
 				a.initialized = false
