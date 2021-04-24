@@ -133,7 +133,17 @@ func (b0 *BLS0ChainScheme) rawSign(hash string) (*bls.Sign, error) {
 	}
 	sk.SetByCSPRNG()
 	sk.DeserializeHexStr(b0.PrivateKey)
+
+	pk := sk.GetPublicKey();
+	fmt.Println("pk:", pk.GetHexString())
+
+	z0 := string(rawHash)
+	z1 := []byte(z0)
+	fmt.Println("z1 to compare:", z1, len(z1))
+	fmt.Println("z0 to compare:", z0, len(z0))
+
 	sig := sk.Sign(string(rawHash))
+	fmt.Println("signature ToHexString to compare:", sig.GetHexString())
 	return sig, nil
 }
 

@@ -12,8 +12,8 @@ github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813/go.mod h1:P+oSoE9y
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/h2non/filetype v1.0.9 h1:Y9YFg/WJNd7XoC5h3WD+GZSxHmuRRDyJQ7fcIlIJplI=
 github.com/h2non/filetype v1.0.9/go.mod h1:isekKqOuhMj+s/7r3rIeTErIRy4Rub5uBWHfvMusLMU=
-github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520 h1:3ek8BJos3JW72rvPzGAWZwJ/iXjOyPSCUI4nAFnTPvg=
-github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520/go.mod h1:uTBfU/n3h1aOYIl5nNTbLn5dUfNkF1P97JTaz3bdvro=
+github.com/herumi/bls-go-binary v1.0.0 h1:PRPF6vPd35zyDy+tp86HwNnGdufCH2lZL0wZGxYvkRs=
+github.com/herumi/bls-go-binary v1.0.0/go.mod h1:O4Vp1AfR4raRGwFeQpr9X/PQtncEicMoOe6BQt1oX0Y=
 github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d h1:sQbbvtUoen3Tfl9G/079tXeqniwPH6TgM/lU4y7lQN8=
 github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d/go.mod h1:xVHEhsiSJJnT0jlcQpQUg+GyoLf0i0xciM1kqWTGT58=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=

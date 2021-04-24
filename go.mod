@@ -6,7 +6,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813 // indirect
 	github.com/h2non/filetype v1.0.9
-	github.com/herumi/bls-go-binary v0.0.0-20191119080710-898950e1a520
+	github.com/herumi/bls-go-binary v1.0.0 // indirect
 	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d // indirect
 	github.com/klauspost/cpuid v1.2.0 // indirect
 	github.com/klauspost/reedsolomon v1.9.2
