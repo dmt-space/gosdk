@@ -1218,3 +1218,20 @@ func Decrypt(key, text string) (string, error) {
 	}
 	return string(response), nil
 }
+
+type FaucetSCConfig struct {
+	PourAmount      common.Balance `json:"pour_amount"`
+	MaxPourAmount   common.Balance `json:"max_pour_amount"`
+	PeriodicLimit   common.Balance `json:"periodic_limit"`
+	GlobalLimit     common.Balance `json:"global_limit"`
+	IndividualReset time.Duration  `json:"individual_reset"` //in hours
+	GlobalReset     time.Duration  `json:"global_rest"`      //in hours
+}
+
+type InterestPoolSCConfig struct {
+	MaxMint       common.Balance `json:"max_mint"`
+	TotalMinted   common.Balance `json:"total_minted"`
+	MinLock       common.Balance `json:"min_lock"`
+	APR           float64        `json:"apr"`
+	MinLockPeriod time.Duration  `json:"min_lock_period"`
+}

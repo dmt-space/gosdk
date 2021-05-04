@@ -131,7 +131,11 @@ type TransactionScheme interface {
 
 	// Miner SC
 
-	MinerSCSettings(*MinerSCMinerInfo) error
+	MinerSCSettings(*MinerSCConfig) error
+	MinerSCMinerSettings(*MinerSCMinerInfo) error
+	MinerSCSharderSettings(*MinerSCMinerInfo) error
+	MinerSCDeleteMiner(*MinerSCMinerInfo) error
+	MinerSCDeleteSharder(*MinerSCMinerInfo) error
 	MinerSCLock(minerID string, lock int64) error
 	MienrSCUnlock(minerID, poolID string) error
 
@@ -150,6 +154,15 @@ type TransactionScheme interface {
 	UpdateAllocation(allocID string, sizeDiff int64, expirationDiff int64, lock, fee int64) error
 	WritePoolLock(allocID string, blobberID string, duration int64, lock, fee int64) error
 	WritePoolUnlock(poolID string, fee int64) error
+	StorageSCConfig(*sdk.StorageSCConfig) error
+
+	// Faucet SC
+
+	FaucetSCSettings(*FaucetSCConfig) error
+
+	// Interest Pool SC
+
+	InterestPoolSCSettings(*InterestPoolSCConfig) error
 }
 
 func signFn(hash string) (string, error) {
@@ -1094,13 +1107,13 @@ type MinerSCMinerStat struct {
 }
 
 type MinerSCMinerInfo struct {
-	*SimpleMienrSCMinerInfo `json:"simple_miner"`
+	*SimpleMinerSCMinerInfo `json:"simple_miner"`
 	Pending                 map[string]MinerSCDelegatePool `json:"pending"`
 	Active                  map[string]MinerSCDelegatePool `json:"active"`
 	Deleting                map[string]MinerSCDelegatePool `json:"deleting"`
 }
 
-type SimpleMienrSCMinerInfo struct {
+type SimpleMinerSCMinerInfo struct {
 	ID      string `json:"id"`
 	BaseURL string `json:"url"`
 
@@ -1113,7 +1126,51 @@ type SimpleMienrSCMinerInfo struct {
 	Stat MinerSCMinerStat `json:"stat"`
 }
 
-func (t *Transaction) MinerSCSettings(info *MinerSCMinerInfo) (err error) {
+func (t *Transaction) MinerSCMinerSettings(info *MinerSCMinerInfo) (err error) {
+	err = t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_MINER_SETTINGS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) MinerSCSharderSettings(info *MinerSCMinerInfo) (err error) {
+	err = t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_SHARDER_SETTINGS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) MinerSCDeleteMiner(info *MinerSCMinerInfo) (err error) {
+	err = t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_MINER_DELETE, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) MinerSCDeleteSharder(info *MinerSCMinerInfo) (err error) {
+	err = t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_SHARDER_DELETE, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) MinerSCSettings(info *MinerSCConfig) (err error) {
 	err = t.createSmartContractTxn(MinerSmartContractAddress,
 		transaction.MINERSC_SETTINGS, info, 0)
 	if err != nil {
@@ -1616,6 +1673,36 @@ func (t *Transaction) WritePoolUnlock(poolID string, fee int64) (
 		return
 	}
 	t.SetTransactionFee(fee)
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) StorageSCConfig(info *sdk.StorageSCConfig) (err error) {
+	err = t.createSmartContractTxn(StorageSmartContractAddress, transaction.STORAGESC_CONFIG, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) FaucetSCSettings(info *FaucetSCConfig) (err error) {
+	err = t.createSmartContractTxn(FaucetSmartContractAddress, transaction.FAUCETSC_UPDATE_LIMITS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { t.submitTxn() }()
+	return
+}
+
+func (t *Transaction) InterestPoolSCSettings(info *InterestPoolSCConfig) (err error) {
+	err = t.createSmartContractTxn(InterestPoolSmartContractAddress, transaction.INTERESTPOOLSC_UPDATE_VARIABLES, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
 	go func() { t.submitTxn() }()
 	return
 }

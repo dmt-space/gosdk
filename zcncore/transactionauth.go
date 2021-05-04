@@ -9,6 +9,7 @@ import (
 	"github.com/0chain/gosdk/core/transaction"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 )
 
 type TransactionWithAuth struct {
@@ -275,11 +276,63 @@ func (ta *TransactionWithAuth) VestingUpdateConfig(
 // miner sc
 //
 
-func (ta *TransactionWithAuth) MinerSCSettings(info *MinerSCMinerInfo) (
+func (ta *TransactionWithAuth) MinerSCSettings(info *MinerSCConfig) (
 	err error) {
 
 	err = ta.t.createSmartContractTxn(MinerSmartContractAddress,
 		transaction.MINERSC_SETTINGS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { ta.submitTxn() }()
+	return
+}
+
+func (ta *TransactionWithAuth) MinerSCMinerSettings(info *MinerSCMinerInfo) (
+	err error) {
+
+	err = ta.t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_MINER_SETTINGS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { ta.submitTxn() }()
+	return
+}
+
+func (ta *TransactionWithAuth) MinerSCSharderSettings(info *MinerSCMinerInfo) (
+	err error) {
+
+	err = ta.t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_SHARDER_SETTINGS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { ta.submitTxn() }()
+	return
+}
+
+func (ta *TransactionWithAuth) MinerSCDeleteMiner(info *MinerSCMinerInfo) (
+	err error) {
+
+	err = ta.t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_MINER_DELETE, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { ta.submitTxn() }()
+	return
+}
+
+func (ta *TransactionWithAuth) MinerSCDeleteSharder(info *MinerSCMinerInfo) (
+	err error) {
+
+	err = ta.t.createSmartContractTxn(MinerSmartContractAddress,
+		transaction.MINERSC_SHARDER_DELETE, info, 0)
 	if err != nil {
 		Logger.Error(err)
 		return
@@ -628,6 +681,44 @@ func (ta *TransactionWithAuth) WritePoolUnlock(poolID string, fee int64) (
 		return
 	}
 	ta.t.SetTransactionFee(fee)
+	go func() { ta.submitTxn() }()
+	return
+}
+
+// StorageSCConfig for current user and given pool.
+func (ta *TransactionWithAuth) StorageSCConfig(info *sdk.StorageSCConfig) (
+	err error) {
+
+	err = ta.t.createSmartContractTxn(StorageSmartContractAddress,
+		transaction.STORAGESC_CONFIG, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { ta.submitTxn() }()
+	return
+}
+
+func (ta *TransactionWithAuth) FaucetSCSettings(info *FaucetSCConfig) (err error) {
+
+	err = ta.t.createSmartContractTxn(FaucetSmartContractAddress,
+		transaction.FAUCETSC_UPDATE_LIMITS, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+	go func() { ta.submitTxn() }()
+	return
+}
+
+func (ta *TransactionWithAuth) InterestPoolSCSettings(info *InterestPoolSCConfig) (err error) {
+
+	err = ta.t.createSmartContractTxn(InterestPoolSmartContractAddress,
+		transaction.INTERESTPOOLSC_UPDATE_VARIABLES, info, 0)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
 	go func() { ta.submitTxn() }()
 	return
 }

@@ -99,11 +99,24 @@ const (
 	STORAGESC_UPDATE_ALLOCATION        = "update_allocation_request"
 	STORAGESC_WRITE_POOL_LOCK          = "write_pool_lock"
 	STORAGESC_WRITE_POOL_UNLOCK        = "write_pool_unlock"
+	STORAGESC_CONFIG                   = "update_config"
 
 	// Miner SC
-	MINERSC_LOCK     = "addToDelegatePool"
-	MINERSC_UNLOCK   = "deleteFromDelegatePool"
-	MINERSC_SETTINGS = "update_settings"
+	MINERSC_LOCK             = "addToDelegatePool"
+	MINERSC_UNLOCK           = "deleteFromDelegatePool"
+	MINERSC_SETTINGS         = "update_settings"
+	MINERSC_MINER_SETTINGS   = "update_miner_settings"
+	MINERSC_SHARDER_SETTINGS = "update_sharder_settings"
+	MINERSC_MINER_DELETE     = "delete_miner"
+	MINERSC_SHARDER_DELETE   = "delete_sharder"
+
+	// Faucet SC
+
+	FAUCETSC_UPDATE_LIMITS = "update_limits"
+
+	// Interest pool SC
+
+	INTERESTPOOLSC_UPDATE_VARIABLES = "update_variables"
 )
 
 type SignFunc = func(msg string) (string, error)

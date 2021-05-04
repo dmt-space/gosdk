@@ -627,6 +627,9 @@ type StorageSCConfig struct {
 	MaxDelegates                    int                     `json:"max_delegates"`
 	MaxCharge                       float64                 `json:"max_charge"`
 	TimeUnit                        time.Duration           `json:"time_unit"`
+	MaxMint                         common.Balance          `json:"max_mint"`
+	MinStake                        common.Balance          `json:"min_stake"`
+	MaxStake                        common.Balance          `json:"max_stake"`
 }
 
 func GetStorageSCConfig() (conf *StorageSCConfig, err error) {
