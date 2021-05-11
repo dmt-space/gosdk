@@ -583,7 +583,7 @@ func TestAllocation_uploadOrUpdateFile(t *testing.T) {
 			nil,
 			args{
 				localPath:     localPath,
-				remotePath:    "/x.txt",
+				remotePath:    "/1.txt",
 				isUpdate:      false,
 				thumbnailPath: "",
 				encryption:    false,
@@ -681,7 +681,7 @@ func TestAllocation_RepairRequired(t *testing.T) {
 		{
 			"Test_Not_Repair_Required_Success",
 			blobberMockFn,
-			"/x.txt",
+			"/1.txt",
 			0xf,
 			expectedFn,
 			false, false,
@@ -708,7 +708,7 @@ func TestAllocation_RepairRequired(t *testing.T) {
 		{
 			"Test_Remote_File_Not_Found_Failed",
 			blobberMockFn,
-			"/x.txt",
+			"/1.txt",
 			0x0,
 			func(assertion *assert.Assertions, testcaseName string) *fileref.FileRef {
 				return nil
@@ -972,7 +972,7 @@ func TestAllocation_deleteFile(t *testing.T) {
 		},
 		{
 			"Test_Not_Abs_Path_Failed",
-			args{"x.txt"},
+			args{"1.txt"},
 			nil,
 			true,
 		},
@@ -1568,7 +1568,7 @@ func TestAllocation_GetFileStats(t *testing.T) {
 		{
 			"Test_Invalid_Remote_Absolute_Path_Failed",
 			args{
-				path: "x.txt",
+				path: "1.txt",
 			},
 			nil,
 			true,
