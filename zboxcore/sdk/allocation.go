@@ -1094,7 +1094,12 @@ func (a *Allocation) CommitFolderChange(operation, preValue, currValue string) (
 		TxnID: t.Hash,
 		Data:  data,
 	}
-	commitFolderReponseBytes, _ := json.Marshal(commitFolderResponse)
+	commitFolderReponseBytes, err := json.Marshal(commitFolderResponse)
+
+	if err != nil {
+		Logger.Error("Error encoding the json file")
+		return "", err
+	}
 
 	commitFolderResponseString := string(commitFolderReponseBytes)
 	return commitFolderResponseString, nil
