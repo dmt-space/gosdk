@@ -3,15 +3,16 @@ package sdk
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/0chain/gosdk/core/common"
 	"math/rand"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/0chain/gosdk/core/common"
 	"github.com/0chain/gosdk/core/version"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
+	"github.com/0chain/gosdk/zboxcore/client"
 	. "github.com/0chain/gosdk/zboxcore/logger"
 	"github.com/0chain/gosdk/zboxcore/sdk/mocks"
 	"github.com/stretchr/testify/assert"
@@ -683,4 +684,26 @@ func TestCommitToFabric(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCreateAllocationForOwner(t *testing.T) {
+	curQuerySleepTime := blockchain.GetQuerySleepTime()
+	defer blockchain.SetQuerySleepTime(curQuerySleepTime)
+	curMaxTxnQuery := blockchain.GetMaxTxnQuery()
+	defer blockchain.SetMaxTxnQuery(curMaxTxnQuery)
+
+	_, _, _, cncl := setupMockInitStorageSDK(t, configDir, 0)
+	defer cncl()
+	mocks.SetMinerHandler(t, "/v1/transaction/put", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+	mocks.SetSharderHandler(t, "/v1/transaction/get/confirmation", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"txn":{"hash":"1309ee2ab8d21b213e959ab0e26201d734bd2752945d9897cb9d98a3c11a6a23","version":"1.0","client_id":"9bf430d6f086f1bdc2d26ad7a708a0e7958aa9ae20efbc6778450739fb1ca468","public_key":"eeb0c33325cbee0fb58bc09962f69a44d0b22ac2824a063eb1002273347e601a4612e6fea7e1a1ae62e0e3b7f1301c4de8a855bae86ebfa6e9dbbb41c3e39c24","transaction_data":"{\"OpType\":\"Move\",\"PreValue\":\"/1.txt\",\"CurrValue\":\"/d/1.txt\"}","transaction_value":0,"signature":"98427e25b635b8d88881ddc9a1f84db0951f145ffa90462c0290ed84563bdc92","creation_date":1617159987,"transaction_type":10,"transaction_fee":0,"txn_output_hash":""},"block_hash":"4dd9de1f3724a688686a5b54879cf424a9f8e6cb56ab77bfd19586dfcc804ba8"}`))
+	})
+	blockchain.SetQuerySleepTime(1)
+	blockchain.SetMaxTxnQuery(3)
+
+	hash, err := CreateAllocationForOwner(client.GetClientID(), client.GetClientPublicKey(), 2, 3, 2*1024*1024*1024, time.Now().Add(720*time.Hour).Unix(), PriceRange{Min: 100000000, Max: 3000000000}, PriceRange{Min: 100000000, Max: 3000000000}, 7*24*time.Hour, 10000000000, blockchain.GetPreferredBlobbers())
+
+	assert.NoErrorf(t, err, "unexpected error but got: %v", err)
+	assert.Equal(t, "1309ee2ab8d21b213e959ab0e26201d734bd2752945d9897cb9d98a3c11a6a23", hash)
 }
