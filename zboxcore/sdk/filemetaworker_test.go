@@ -2,10 +2,13 @@ package sdk
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
 
+	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
 	"github.com/stretchr/testify/require"
@@ -26,7 +29,18 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 		return nil
 	}
 	defer cncl()
-	var wg sync.WaitGroup
+	req := &ListRequest{
+		allocationID:   a.ID,
+		allocationTx:   a.Tx,
+		blobbers:       a.Blobbers,
+		remotefilepath: "/1.txt",
+		Consensus: Consensus{
+			consensusThresh: (float32(a.DataShards) * 100) / float32(a.DataShards+a.ParityShards),
+			fullconsensus:   float32(a.DataShards + a.ParityShards),
+		},
+		ctx: context.Background(),
+		wg:  &sync.WaitGroup{},
+	}
 	tests := []struct {
 		name           string
 		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
@@ -58,6 +72,24 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 			true,
 		},
 		{
+			"Test_Success_With_Auth_Ticket",
+			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+				blobbersResponseMock(t, testCaseName)
+				authTicket, err := a.GetAuthTicket("/1/txt", "1.txt", fileref.FILE, client.GetClientID(), "")
+				require.NoErrorf(t, err, "unexpected get auth ticket error: %v", err)
+				require.NotEmptyf(t, authTicket, "unexpected empty auth ticket")
+				sEnc, err := base64.StdEncoding.DecodeString(authTicket)
+				require.NoErrorf(t, err, "unexpected decode auth ticket error: %v", err)
+				err = json.Unmarshal(sEnc, &req.authToken)
+				require.NoErrorf(t, err, "unexpected error when marshaling auth ticket error: %v", err)
+				return func(t *testing.T) {
+					req.authToken = nil
+				}
+			},
+			true,
+			false,
+		},
+		{
 			"Test_Success",
 			blobbersResponseMock,
 			true,
@@ -72,20 +104,10 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 					defer teardown(t)
 				}
 			}
-			req := &ListRequest{
-				allocationID:   a.ID,
-				allocationTx:   a.Tx,
-				blobbers:       a.Blobbers,
-				remotefilepath: "/1.txt",
-				Consensus: Consensus{
-					consensusThresh: (float32(a.DataShards) * 100) / float32(a.DataShards+a.ParityShards),
-					fullconsensus:   float32(a.DataShards + a.ParityShards),
-				},
-				ctx: context.Background(),
-				wg:  func() *sync.WaitGroup { wg.Add(1); return &wg }(),
-			}
 			rspCh := make(chan *fileMetaResponse, 1)
+			req.wg.Add(1)
 			go req.getFileMetaInfoFromBlobber(req.blobbers[0], 0, rspCh)
+			req.wg.Wait()
 			resp := <-rspCh
 
 			var expectedResult *fileref.FileRef
