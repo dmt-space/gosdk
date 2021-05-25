@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"sync"
+	"testing"
+
 	"github.com/0chain/gosdk/core/common"
 	"github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zboxcore/sdk/mocks"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
 	tm "github.com/stretchr/testify/mock"
-	"sync"
-	"testing"
 
 	"github.com/0chain/gosdk/zboxcore/blockchain"
 	encMocks "github.com/0chain/gosdk/zboxcore/encryption/mocks"
@@ -107,6 +108,18 @@ func TestMaxBlobbersRequiredGreaterThanImplicitLimit128(t *testing.T) {
 
 	if req.IsFullConsensusSupported() {
 		t.Errorf("IsFullConsensusSupported() = %v, want %v", true, false)
+	}
+}
+
+func TestNaxBlobbersRequiredEqualToImplicitLimit32(t *testing.T) {
+	var maxNumOfBlobbers = 32
+
+	var req = &UploadRequest{}
+	req.setUploadMask(maxNumOfBlobbers)
+	req.fullconsensus = float32(maxNumOfBlobbers)
+
+	if !req.IsFullConsensusSupported() {
+		t.Errorf("IsFullConsensusSupported() = %v, want %v", false, true)
 	}
 }
 
