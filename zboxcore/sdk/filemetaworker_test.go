@@ -5,12 +5,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk/zboxcore/mocks"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,10 +29,6 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 	defer closeFn()
 	// setup mock allocation
 	a, cncl := setupMockAllocation(t, filemetaWorkerTestDir, blobberMocks)
-	var blobbersResponseMock = func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
-		setupBlobberMockResponses(t, blobberMocks, filemetaWorkerTestDir+"/getFileMetaInfoFromBlobber", testcaseName)
-		return nil
-	}
 	defer cncl()
 	req := &ListRequest{
 		allocationID:   a.ID,
@@ -43,13 +44,13 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 	}
 	tests := []struct {
 		name           string
-		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
 		want           bool
 		wantErr        bool
 	}{
 		{
 			"Test_Error_New_HTTP_Failed",
-			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
+			func(t *testing.T) (teardown func(t *testing.T)) {
 				url := a.Blobbers[0].Baseurl
 				a.Blobbers[0].Baseurl = string([]byte{0x7f, 0, 0})
 				return func(t *testing.T) {
@@ -67,14 +68,28 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 		},
 		{
 			"Test_Error_HTTP_Response_Not_JSON_Format",
-			blobbersResponseMock,
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				m := &mocks.HttpClient{}
+				zboxutil.Client = m
+				m.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{
+					StatusCode: http.StatusOK,
+					Body:       ioutil.NopCloser(strings.NewReader("This is not JSON format")),
+				}, nil)
+				return nil
+			},
 			false,
 			true,
 		},
 		{
 			"Test_Success_With_Auth_Ticket",
-			func(t *testing.T, testCaseName string) (teardown func(t *testing.T)) {
-				blobbersResponseMock(t, testCaseName)
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				m := &mocks.HttpClient{}
+				zboxutil.Client = m
+				bodyString := `{"actual_file_hash":"03cfd743661f07975fa2f1220c5194cbaff48451","actual_file_size":4,"actual_thumbnail_hash":"","actual_thumbnail_size":0,"attributes":{},"collaborators":[],"commit_meta_txns":[],"content_hash":"3a52ce780950d4d969792a2559cd519d7ee8c727","created_at":"2021-03-17T08:15:36.137135Z","custom_meta":"","encrypted_key":"","hash":"f7e67105e7645b71dc8a6dc92d68d989026eb1dd2817f1b042153c9a7a4d7a13","lookup_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","merkle_root":"ea13052ab648c94a2fc001ce4f6f5f2d8bb699d4b69264b361c45324c88da744","mimetype":"application/octet-stream","name":"1.txt","num_of_blocks":1,"on_cloud":false,"path":"/1.txt","path_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","size":1,"thumbnail_hash":"","thumbnail_size":0,"type":"f","updated_at":"2021-03-17T08:15:36.137135Z"}`
+				m.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{
+					StatusCode: http.StatusOK,
+					Body:       ioutil.NopCloser(strings.NewReader(bodyString)),
+				}, nil)
 				authTicket, err := a.GetAuthTicket("/1/txt", "1.txt", fileref.FILE, client.GetClientID(), "")
 				require.NoErrorf(t, err, "unexpected get auth ticket error: %v", err)
 				require.NotEmptyf(t, authTicket, "unexpected empty auth ticket")
@@ -91,7 +106,16 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 		},
 		{
 			"Test_Success",
-			blobbersResponseMock,
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				m := &mocks.HttpClient{}
+				zboxutil.Client = m
+				bodyString := `{"actual_file_hash":"03cfd743661f07975fa2f1220c5194cbaff48451","actual_file_size":4,"actual_thumbnail_hash":"","actual_thumbnail_size":0,"attributes":{},"collaborators":[],"commit_meta_txns":[],"content_hash":"3a52ce780950d4d969792a2559cd519d7ee8c727","created_at":"2021-03-17T08:15:36.137135Z","custom_meta":"","encrypted_key":"","hash":"f7e67105e7645b71dc8a6dc92d68d989026eb1dd2817f1b042153c9a7a4d7a13","lookup_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","merkle_root":"ea13052ab648c94a2fc001ce4f6f5f2d8bb699d4b69264b361c45324c88da744","mimetype":"application/octet-stream","name":"1.txt","num_of_blocks":1,"on_cloud":false,"path":"/1.txt","path_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","size":1,"thumbnail_hash":"","thumbnail_size":0,"type":"f","updated_at":"2021-03-17T08:15:36.137135Z"}`
+				m.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{
+					StatusCode: http.StatusOK,
+					Body:       ioutil.NopCloser(strings.NewReader(bodyString)),
+				}, nil)
+				return nil
+			},
 			true,
 			false,
 		},
@@ -100,7 +124,7 @@ func TestListRequest_getFileMetaInfoFromBlobber(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			if additionalMock := tt.additionalMock; additionalMock != nil {
-				if teardown := additionalMock(t, tt.name); teardown != nil {
+				if teardown := additionalMock(t); teardown != nil {
 					defer teardown(t)
 				}
 			}
@@ -131,20 +155,29 @@ func TestListRequest_getFileConsensusFromBlobbers(t *testing.T) {
 	defer closeFn()
 	// setup mock allocation
 	a, cncl := setupMockAllocation(t, filemetaWorkerTestDir, blobberMocks)
-	var blobbersResponseMock = func(t *testing.T, testcaseName string) (teardown func(t *testing.T)) {
-		setupBlobberMockResponses(t, blobberMocks, filemetaWorkerTestDir+"/getFileConsensusFromBlobbers", testcaseName)
-		return nil
-	}
 	defer cncl()
 	tests := []struct {
 		name           string
-		additionalMock func(t *testing.T, testCaseName string) (teardown func(t *testing.T))
+		additionalMock func(t *testing.T) (teardown func(t *testing.T))
 		wantErr        bool
 		wantFunc       func(require *require.Assertions, req *ListRequest, foundMask zboxutil.Uint128)
 	}{
 		{
 			"Test_All_Success",
-			blobbersResponseMock,
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				m := &mocks.HttpClient{}
+				zboxutil.Client = m
+				bodyString := `{"actual_file_hash":"03cfd743661f07975fa2f1220c5194cbaff48451","actual_file_size":4,"actual_thumbnail_hash":"","actual_thumbnail_size":0,"attributes":{},"collaborators":[],"commit_meta_txns":[],"content_hash":"3a52ce780950d4d969792a2559cd519d7ee8c727","created_at":"2021-03-17T08:15:36.137135Z","custom_meta":"","encrypted_key":"","hash":"f7e67105e7645b71dc8a6dc92d68d989026eb1dd2817f1b042153c9a7a4d7a13","lookup_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","merkle_root":"ea13052ab648c94a2fc001ce4f6f5f2d8bb699d4b69264b361c45324c88da744","mimetype":"application/octet-stream","name":"1.txt","num_of_blocks":1,"on_cloud":false,"path":"/1.txt","path_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","size":1,"thumbnail_hash":"","thumbnail_size":0,"type":"f","updated_at":"2021-03-17T08:15:36.137135Z"}`
+				m.On("Do", mock.AnythingOfType("*http.Request")).Run(func(args mock.Arguments) {
+					for _, c := range m.ExpectedCalls {
+						c.ReturnArguments = mock.Arguments{&http.Response{
+							StatusCode: http.StatusOK,
+							Body:       ioutil.NopCloser(strings.NewReader(bodyString)),
+						}, nil}
+					}
+				})
+				return nil
+			},
 			false,
 			func(require *require.Assertions, req *ListRequest, foundMask zboxutil.Uint128) {
 				require.NotNil(req)
@@ -154,7 +187,28 @@ func TestListRequest_getFileConsensusFromBlobbers(t *testing.T) {
 		},
 		{
 			"Test_Index_3_Error",
-			blobbersResponseMock,
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				m := &mocks.HttpClient{}
+				zboxutil.Client = m
+				bodyString := `{"actual_file_hash":"03cfd743661f07975fa2f1220c5194cbaff48451","actual_file_size":4,"actual_thumbnail_hash":"","actual_thumbnail_size":0,"attributes":{},"collaborators":[],"commit_meta_txns":[],"content_hash":"3a52ce780950d4d969792a2559cd519d7ee8c727","created_at":"2021-03-17T08:15:36.137135Z","custom_meta":"","encrypted_key":"","hash":"f7e67105e7645b71dc8a6dc92d68d989026eb1dd2817f1b042153c9a7a4d7a13","lookup_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","merkle_root":"ea13052ab648c94a2fc001ce4f6f5f2d8bb699d4b69264b361c45324c88da744","mimetype":"application/octet-stream","name":"1.txt","num_of_blocks":1,"on_cloud":false,"path":"/1.txt","path_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","size":1,"thumbnail_hash":"","thumbnail_size":0,"type":"f","updated_at":"2021-03-17T08:15:36.137135Z"}`
+				statusCode := http.StatusOK
+				mockCall := m.On("Do", mock.MatchedBy(func(req *http.Request) bool { return req.Method == "POST" }))
+				mockCall.RunFn = func(args mock.Arguments) {
+					req := args[0].(*http.Request)
+					url := req.URL.Host
+					switch url {
+					case strings.ReplaceAll(a.Blobbers[3].Baseurl, "http://", ""):
+						statusCode = http.StatusBadRequest
+					default:
+						statusCode = http.StatusOK
+					}
+					mockCall.ReturnArguments = mock.Arguments{&http.Response{
+						StatusCode: statusCode,
+						Body:       ioutil.NopCloser(strings.NewReader(bodyString)),
+					}, nil}
+				}
+				return nil
+			},
 			false,
 			func(require *require.Assertions, req *ListRequest, foundMask zboxutil.Uint128) {
 				require.NotNil(req)
@@ -164,7 +218,20 @@ func TestListRequest_getFileConsensusFromBlobbers(t *testing.T) {
 		},
 		{
 			"Test_Error_File_Consensus_Not_Found",
-			blobbersResponseMock,
+			func(t *testing.T) (teardown func(t *testing.T)) {
+				m := &mocks.HttpClient{}
+				zboxutil.Client = m
+				bodyString := `{"actual_file_hash":"03cfd743661f07975fa2f1220c5194cbaff48451","actual_file_size":4,"actual_thumbnail_hash":"","actual_thumbnail_size":0,"attributes":{},"collaborators":[],"commit_meta_txns":[],"content_hash":"3a52ce780950d4d969792a2559cd519d7ee8c727","created_at":"2021-03-17T08:15:36.137135Z","custom_meta":"","encrypted_key":"","hash":"f7e67105e7645b71dc8a6dc92d68d989026eb1dd2817f1b042153c9a7a4d7a13","lookup_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","merkle_root":"ea13052ab648c94a2fc001ce4f6f5f2d8bb699d4b69264b361c45324c88da744","mimetype":"application/octet-stream","name":"1.txt","num_of_blocks":1,"on_cloud":false,"path":"/1.txt","path_hash":"c884abb32aa0357e2541b683f6e52bfab9143d33b968977cf6ba31b43e832697","size":1,"thumbnail_hash":"","thumbnail_size":0,"type":"f","updated_at":"2021-03-17T08:15:36.137135Z"}`
+				m.On("Do", mock.AnythingOfType("*http.Request")).Run(func(args mock.Arguments) {
+					for _, c := range m.ExpectedCalls {
+						c.ReturnArguments = mock.Arguments{&http.Response{
+							StatusCode: http.StatusBadRequest,
+							Body:       ioutil.NopCloser(strings.NewReader(bodyString)),
+						}, nil}
+					}
+				})
+				return nil
+			},
 			true,
 			func(require *require.Assertions, req *ListRequest, foundMask zboxutil.Uint128) {
 				require.NotNil(req)
@@ -177,7 +244,7 @@ func TestListRequest_getFileConsensusFromBlobbers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			if additionalMock := tt.additionalMock; additionalMock != nil {
-				if teardown := additionalMock(t, tt.name); teardown != nil {
+				if teardown := additionalMock(t); teardown != nil {
 					defer teardown(t)
 				}
 			}
