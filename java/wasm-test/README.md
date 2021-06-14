@@ -7,8 +7,10 @@ mvn install:install-file -Dfile=./wasmer-jni-(arch)-(platform)-0.3.0.jar  -Dgrou
 
 Then either  
 
-Build and run the codebase:  
+Build the codebase:  
 mvn clean install  
+
+Then either run the jar directly:  
 java -jar target/wasm-java-with-dependencies.jar <wasm file> <function name> <function args>  
 
 Or   
