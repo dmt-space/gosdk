@@ -108,7 +108,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NOTE: Input yes For Building With Tag v0.0.0 from master & v1.1.1 from staging<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NOTE: Input the current release version for zboxcli (Input Tag Example - v1.2.2)<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4. Finally click on the Run Workflow.
-![zboxcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/workflow-blobber.png "WorkFlow diagram for zboxcli")
+![zboxcli](https://github.com/0chain/gosdk/blob/gitactionsfix/docs/cicd/workflow-zboxcli.png "WorkFlow diagram for zboxcli")
 
 ----
 ### For zboxmobile from gosdk repo
@@ -136,7 +136,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NOTE: Input yes For Building With Tag v0.0.0 from master & v1.1.1 from staging<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NOTE: Input the current release version for zwalletcli(Input Tag Example - v1.2.2)<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4. Finally click on the Run Workflow.
-![zwalletcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/workflow-blobber.png "WorkFlow diagram for zwalletcli")
+![zwalletcli](https://github.com/0chain/gosdk/blob/gitactionsfix/docs/cicd/workflow-zwalletcli.png "WorkFlow diagram for zwalletcli")
 
 ----
 ## Auto Trigger
