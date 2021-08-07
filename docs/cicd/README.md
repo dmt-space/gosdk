@@ -98,7 +98,7 @@
 ----
 
 ### For zboxcli from gosdk repo
-![zboxcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-blobber-build.png "UML diagram for zboxcli")
+![zboxcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-zboxcli-build.png "UML diagram for zboxcli")
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steps are as follows:-<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. Go to the gosdk repository.<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Click on the Actions to choose the workflow to run.<br />
@@ -112,7 +112,7 @@
 
 ----
 ### For zboxmobile from gosdk repo
-![zboxmobile](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-blobber-build.png "UML diagram for zboxmobile")
+![zboxmobile](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-zboxmobile-build.png "UML diagram for zboxmobile")
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steps are as follows:-<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. Go to the gosdk repository.<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Click on the Actions to choose the workflow to run.<br />
@@ -122,11 +122,11 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NOTE: Input yes For Building With Tag v0.0.0 from master & v1.1.1 from staging<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; NOTE: Input the current release version for zboxmobile(Input Tag Example - v1.2.2)<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4. Finally click on the Run Workflow.
-![zboxmobile](https://github.com/0chain/gosdk/blob/master/docs/cicd/workflow-blobber.png "WorkFlow diagram for zboxmobile")
+![zboxmobile](https://github.com/0chain/gosdk/blob/master/docs/cicd/workflow-zboxmobile.png "WorkFlow diagram for zboxmobile")
 
 ----
 ### For zwalletcli from gosdk repo
-![zwalletcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-blobber-build.png "UML diagram for zwalletcli")
+![zwalletcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-zwalletcli-build.png "UML diagram for zwalletcli")
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steps are as follows:-<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. Go to the gosdk repository.<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Click on the Actions to choose the workflow to run.<br />
