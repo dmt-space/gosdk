@@ -98,7 +98,7 @@
 ----
 
 ### For zboxcli from gosdk repo
-![zboxcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-zboxcli-build.png "UML diagram for zboxcli")
+![zboxcli](https://github.com/0chain/gosdk/blob/gitactionsfix/docs/cicd/trigg-zboxcli-build.png "UML diagram for zboxcli")
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steps are as follows:-<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. Go to the gosdk repository.<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Click on the Actions to choose the workflow to run.<br />
@@ -112,7 +112,7 @@
 
 ----
 ### For zboxmobile from gosdk repo
-![zboxmobile](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-zboxmobile-build.png "UML diagram for zboxmobile")
+![zboxmobile](https://github.com/0chain/gosdk/blob/gitactionsfix/docs/cicd/trigg-zboxmobile-build.png "UML diagram for zboxmobile")
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steps are as follows:-<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. Go to the gosdk repository.<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Click on the Actions to choose the workflow to run.<br />
@@ -126,7 +126,7 @@
 
 ----
 ### For zwalletcli from gosdk repo
-![zwalletcli](https://github.com/0chain/gosdk/blob/master/docs/cicd/trigg-zwalletcli-build.png "UML diagram for zwalletcli")
+![zwalletcli](https://github.com/0chain/gosdk/blob/gitactionsfix/docs/cicd/trigg-zwalletcli-build.png "UML diagram for zwalletcli")
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steps are as follows:-<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. Go to the gosdk repository.<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Click on the Actions to choose the workflow to run.<br />
