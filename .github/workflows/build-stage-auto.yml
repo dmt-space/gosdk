@@ -101,7 +101,7 @@ jobs:
       env:
         WITH_V: true
         DEFAULT_BUMP: ${{ github.event.inputs.version_tag }}
-        RELEASE_BRANCHES: gitactionsfix
+        RELEASE_BRANCHES: staging
         TAG_CONTEXT: repo
         VERBOSE: true
         
