@@ -98,12 +98,14 @@ jobs:
     - name: Create Release for Input Tag
       id: create_release_fix
       if: github.event.inputs.fixed_tag == 'no'
-      uses: zendesk/action-create-release@v1 
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
+      uses: anothrNick/github-tag-action@1.34.0 
+      env:
+        WITH_V: true
+#       with:
+#         tag_name: ${{ github.ref }}
+#         release_name: Release ${{ github.ref }}
+#         draft: false
+#         prerelease: false
         
 #   zproxy:
 #     name: Triggering 0proxy Build
