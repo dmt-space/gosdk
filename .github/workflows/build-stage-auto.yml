@@ -40,14 +40,14 @@ jobs:
 #       run: go build -v ./...
 
 #     - name: Test
-      run: go test -v ./...      
+#       run: go test -v ./...      
 
   make:
     name: Make File
     runs-on: ubuntu-20.04
 
-    needs: 
-    - build
+#     needs: 
+#     - build
     
     steps:
     - name: Checkout code
