@@ -85,12 +85,12 @@ jobs:
     - name: Create Release for Fixed v1.1.1
       id: create_release_v1_1_1
 #       if: github.event.inputs.fixed_tag == 'yes' && steps.get_version.outputs.TAG == 'staging'
-      uses: svenstaro/upload-release-action@v2
+      uses: zendesk/action-create-release@v1
       with:
-        file_glob: true
-        tag: v1.1.1
+        tag_name: v1.1.1
         release_name: v1.1.1
-        overwrite: true
+        draft: false
+        prerelease: false
 
     - name: Create Release for Next Version
       id: create_release_next_version
