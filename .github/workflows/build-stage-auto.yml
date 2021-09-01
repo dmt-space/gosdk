@@ -15,31 +15,31 @@ env:
   GITHUB_TOKEN: ${{ secrets.GOSDK }}
   
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-20.04
+#   build:
+#     name: Build
+#     runs-on: ubuntu-20.04
 
-    steps:
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: ^1.14
+#     steps:
+#     - name: Set up Go 1.x
+#       uses: actions/setup-go@v2
+#       with:
+#         go-version: ^1.14
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+#     - name: Check out code into the Go module directory
+#       uses: actions/checkout@v2
 
-    - name: Get Dependencies
-      run: |
-        go get -v -t -d ./...
-        if [ -f Gopkg.toml ]; then
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-            dep ensure
-        fi
+#     - name: Get Dependencies
+#       run: |
+#         go get -v -t -d ./...
+#         if [ -f Gopkg.toml ]; then
+#             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+#             dep ensure
+#         fi
         
-    - name: Build
-      run: go build -v ./...
+#     - name: Build
+#       run: go build -v ./...
 
-    - name: Test
+#     - name: Test
       run: go test -v ./...      
 
   make:
@@ -53,21 +53,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
       
-    - name: Create sdkfile
-      run: |
-        cat <<EOF > sdkversion.go
-          package main
-            import (
-                "fmt"
-                "github.com/0chain/gosdk/zcncore"
-            )
-            func main() {
-                fmt.Println("gosdk version: ", zcncore.GetVersion())
-            }
-        EOF
+#     - name: Create sdkfile
+#       run: |
+#         cat <<EOF > sdkversion.go
+#           package main
+#             import (
+#                 "fmt"
+#                 "github.com/0chain/gosdk/zcncore"
+#             )
+#             func main() {
+#                 fmt.Println("gosdk version: ", zcncore.GetVersion())
+#             }
+#         EOF
         
-    - name: Create SDK
-      run: go build -o sdkversion sdkversion.go
+#     - name: Create SDK
+#       run: go build -o sdkversion sdkversion.go
 
     - name: Get Branch
       id: get_version
