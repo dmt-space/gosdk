@@ -98,7 +98,6 @@ jobs:
       id: create_release_next_version
       uses: zendesk/action-create-release@v1 
       with:
-        tag_name: v
         draft: false
         prerelease: false
         auto_increment_type: ${{ github.event.inputs.version_tag }}
