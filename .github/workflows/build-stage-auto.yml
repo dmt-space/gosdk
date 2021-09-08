@@ -101,6 +101,7 @@ jobs:
         draft: false
         prerelease: false
         auto_increment_type: ${{ github.event.inputs.version_tag }}
+        tag_schema: semantic
         
   zproxy:
     name: Triggering 0proxy Build
