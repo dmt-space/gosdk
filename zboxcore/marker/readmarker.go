@@ -29,5 +29,6 @@ func (rm *ReadMarker) GetHash() string {
 func (rm *ReadMarker) Sign() error {
 	var err error
 	rm.Signature, err = client.Sign(rm.GetHash())
+
 	return err
 }

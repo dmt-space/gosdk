@@ -142,6 +142,7 @@ func (req *BlockDownloadRequest) downloadBlobberBlock() {
 		rm.Timestamp = common.Now()
 		rm.ReadCounter = getBlobberReadCtr(req.blobber) + req.numBlocks
 		err := rm.Sign()
+		Logger.Info("piers blockdownloadworker rm.Sign rm", rm, "hash", rm.GetHash())
 		if err != nil {
 			req.result <- &downloadBlock{Success: false, idx: req.blobberIdx, err: errors.Wrap(err, "Error: Signing readmarker failed")}
 			return
@@ -165,6 +166,7 @@ func (req *BlockDownloadRequest) downloadBlobberBlock() {
 		formWriter.WriteField("block_num", fmt.Sprintf("%d", req.blockNum))
 		formWriter.WriteField("num_blocks", fmt.Sprintf("%d", req.numBlocks))
 		formWriter.WriteField("read_marker", string(rmData))
+		Logger.Info("piers authTicket auth ticket just before marshal", req.authTicket)
 		if req.authTicket != nil {
 			authTicketBytes, _ := json.Marshal(req.authTicket)
 			formWriter.WriteField("auth_token", string(authTicketBytes))
