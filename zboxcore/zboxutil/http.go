@@ -121,12 +121,12 @@ var envProxy proxyFromEnv
 
 func init() {
 	Client = &http.Client{
-		Transport: transport,
+		Transport: DefaultTransport,
 	}
 	envProxy.initialize()
 }
 
-var transport = &http.Transport{
+var DefaultTransport = &http.Transport{
 	Proxy: envProxy.Proxy,
 	DialContext: (&net.Dialer{
 		Timeout:   45 * time.Second,
@@ -520,7 +520,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			q.Add(k, v)
 		}
 		urlObj.RawQuery = q.Encode()
-		client := &http.Client{Transport: transport}
+		client := &http.Client{Transport: DefaultTransport}
 
 		response, err := client.Get(urlObj.String())
 		if err != nil {
@@ -572,7 +572,7 @@ func HttpDo(ctx context.Context, cncl context.CancelFunc, req *http.Request, f f
 	// defer cncl()
 	select {
 	case <-ctx.Done():
-		transport.CancelRequest(req)
+		DefaultTransport.CancelRequest(req)
 		<-c // Wait for f to return.
 		return ctx.Err()
 	case err := <-c:

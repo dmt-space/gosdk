@@ -204,7 +204,7 @@ func (req *DownloadRequest) processDownload(ctx context.Context) {
 		size = fileRef.ActualThumbnailSize
 	}
 	req.encryptedKey = fileRef.EncryptedKey
-	req.chunkSize = fileRef.ChunkSize
+	req.chunkSize = int(fileRef.ChunkSize)
 	Logger.Info("Encrypted key from fileref", req.encryptedKey)
 	// Calculate number of bytes per shard.
 	perShard := (size + int64(req.datashards) - 1) / int64(req.datashards)

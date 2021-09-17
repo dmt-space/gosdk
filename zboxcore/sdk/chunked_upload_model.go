@@ -2,9 +2,14 @@ package sdk
 
 import (
 	"hash/fnv"
+	"os"
+	"runtime"
 	"strconv"
+	"sync"
 
-	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk/core/filelock"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 )
 
@@ -18,13 +23,13 @@ type FileMeta struct {
 	// ThumbnailPath local path of source thumbnail
 	ThumbnailPath string
 
-	// ActualHash hash of orignial file (unencoded, unencrypted)
+	// ActualHash hash of original file (un-encoded, un-encrypted)
 	ActualHash string
-	// ActualSize total bytes of  orignial file (unencoded, unencrypted).  it is 0 if input is live stream.
+	// ActualSize total bytes of  original file (unencoded, un-encrypted).  it is 0 if input is live stream.
 	ActualSize int64
-	// ActualThumbnailSize total bytes of orignial thumbnail (unencoded, unencrypted)
+	// ActualThumbnailSize total bytes of original thumbnail (un-encoded, un-encrypted)
 	ActualThumbnailSize int64
-	// ActualThumbnailHash hash of orignial thumbnail (unencoded, unencrypted)
+	// ActualThumbnailHash hash of original thumbnail (un-encoded, un-encrypted)
 	ActualThumbnailHash string
 
 	//RemoteName remote file name
@@ -35,7 +40,7 @@ type FileMeta struct {
 	Attributes fileref.Attributes
 }
 
-// FileID generante id of progress on local cache
+// FileID generate id of progress on local cache
 func (meta *FileMeta) FileID() string {
 
 	hash := fnv.New64a()
@@ -57,16 +62,16 @@ type UploadFormData struct {
 	// Hash hash of shard thumbnail  (encoded,encrypted)
 	ThumbnailContentHash string `json:"thumbnail_content_hash,omitempty"`
 
-	// MerkleRoot challenge hash of shard data (encoded, encrypted)
-	MerkleRoot string `json:"merkle_root,omitempty"`
+	// ChallengeHash challenge hash of shard data (encoded, encrypted)
+	ChallengeHash string `json:"merkle_root,omitempty"`
 
-	// ActualHash hash of orignial file (unencoded, unencrypted)
+	// ActualHash hash of original file (un-encoded, un-encrypted)
 	ActualHash string `json:"actual_hash,omitempty"`
-	// ActualSize total bytes of  orignial file (unencoded, unencrypted)
+	// ActualSize total bytes of original file (un-encoded, un-encrypted)
 	ActualSize int64 `json:"actual_size,omitempty"`
-	// ActualThumbnailSize total bytes of orignial thumbnail (unencoded, unencrypted)
+	// ActualThumbnailSize total bytes of original thumbnail (un-encoded, un-encrypted)
 	ActualThumbSize int64 `json:"actual_thumb_size,omitempty"`
-	// ActualThumbnailHash hash of orignial thumbnail (unencoded, unencrypted)
+	// ActualThumbnailHash hash of original thumbnail (un-encoded, un-encrypted)
 	ActualThumbHash string `json:"actual_thumb_hash,omitempty"`
 
 	MimeType     string             `json:"mimetype,omitempty"`
@@ -87,10 +92,10 @@ type UploadProgress struct {
 	ID string `json:"id"`
 
 	// ChunkSize size of chunk
-	ChunkSize int `json:"chunk_size,omitempty"`
+	ChunkSize int64 `json:"chunk_size,omitempty"`
 	// EncryptOnUpload encrypt data on upload or not
-	EncryptOnUpload  bool `json:"is_encrypted,omitempty"`
-	EncryptPrivteKey string
+	EncryptOnUpload   bool   `json:"is_encrypted,omitempty"`
+	EncryptPrivateKey string `json:"-"`
 
 	// ConnectionID chunked upload connection_id
 	ConnectionID string `json:"connection_id,omitempty"`
@@ -104,19 +109,57 @@ type UploadProgress struct {
 
 // UploadBlobberStatus the status of blobber's upload progress
 type UploadBlobberStatus struct {
-	ChallengeHasher *util.FixedMerkleTree   `json:"challenge_hasher"`
-	ContentHasher   *util.CompactMerkleTree `json:"content_hashser"`
+	Hasher Hasher
 
 	// UploadLength total bytes that has been uploaded to blobbers
 	UploadLength int64 `json:"upload_length,omitempty"`
 }
 
-// getChallengeHash see detail on https://github.com/0chain/blobber/wiki/Protocols
-func (status *UploadBlobberStatus) getChallengeHash() string {
-	return status.ChallengeHasher.GetMerkleRoot()
+type FLock struct {
+	sync.Mutex
+	file string
+	fh   *os.File
 }
 
-// getContentHash see detail on https://github.com/0chain/blobber/wiki/Protocols
-func (status *UploadBlobberStatus) getContentHash() string {
-	return status.ContentHasher.GetMerkleRoot()
+func createFLock(file string) *FLock {
+	return &FLock{
+		file: file,
+	}
+}
+
+func (f *FLock) Lock() error {
+	if f == nil {
+		return errors.Throw(constants.ErrInvalidParameter, "f")
+	}
+
+	f.Mutex.Lock()
+	defer f.Mutex.Unlock()
+
+	if f.fh == nil {
+		// open a new os.File instance
+		// create it if it doesn't exist, and open the file read-only.
+		flags := os.O_CREATE
+		if runtime.GOOS == "aix" {
+			// AIX cannot preform write-lock (ie exclusive) on a
+			// read-only file.
+			flags |= os.O_RDWR
+		} else {
+			flags |= os.O_RDONLY
+		}
+		fh, err := os.OpenFile(f.file, flags, os.FileMode(0600))
+		if err != nil {
+			return err
+		}
+
+		f.fh = fh
+	}
+
+	return filelock.Lock(f.fh)
+}
+
+func (f *FLock) Unlock() {
+	err := filelock.Unlock(f.fh)
+	if err != nil {
+		os.Remove(f.file)
+	}
 }
