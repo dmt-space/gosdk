@@ -45,4 +45,8 @@ var (
 	// errInvalidUserDataMarker represents an error
 	// that user data marker was invalidated.
 	errInvalidUserDataMarker = errors.New(errCodeInvalid, "invalid user data marker")
+
+	// errInvalidPairRewardPool represents an error
+	// that pairRewardPool was invalidated.
+	errInvalidPairRewardPool = errors.New(errCodeInvalid, "invalid pair reward pool")
 )
