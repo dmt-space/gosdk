@@ -3,6 +3,7 @@ package magmasc
 import (
 	"encoding/json"
 	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk/zmagmacore/config"
 )
 
 type (
@@ -18,8 +19,15 @@ var (
 )
 
 // newCommonRewPool returns a new constructed token pool.
-func newCommonRewPool() *CommonRewardPool {
+func newCommonRewardPool() *CommonRewardPool {
 	return &CommonRewardPool{}
+}
+
+// NewCommonRewardPoolFromCfg creates CommonRewardPool from config.Provider.
+func NewCommonRewardPoolFromCfg(cfg *config.CommonRewardPool) *CommonRewardPool {
+	return &CommonRewardPool{
+		ID: cfg.ID,
+	}
 }
 
 // Decode implements util.Serializable interface.

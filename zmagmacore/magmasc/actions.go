@@ -293,7 +293,7 @@ func ExecuteAccessPointUpdate(ctx context.Context, accessPoint *AccessPoint) (*A
 }
 
 // ExecuteCommonRewardPoolLock executes lock common rewards pool sc function and returns updated.
-func ExecuteCommonRewardPoolLock(ctx context.Context, id CommonRewardPool) (*CommonRewardPool, error) {
+func ExecuteCommonRewardPoolLock(ctx context.Context, id *CommonRewardPool) (*CommonRewardPool, error) {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
@@ -319,7 +319,7 @@ func ExecuteCommonRewardPoolLock(ctx context.Context, id CommonRewardPool) (*Com
 }
 
 // ExecuteCommonRewardPoolUnlock executes lock common rewards pool sc function and returns updated.
-func ExecuteCommonRewardPoolUnlock(ctx context.Context, id CommonRewardPool) (*CommonRewardPool, error) {
+func ExecuteCommonRewardPoolUnlock(ctx context.Context, id *CommonRewardPool) (*CommonRewardPool, error) {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
