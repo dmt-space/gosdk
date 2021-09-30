@@ -292,6 +292,58 @@ func ExecuteAccessPointUpdate(ctx context.Context, accessPoint *AccessPoint) (*A
 	return accessPoint, nil
 }
 
+// ExecuteCommonRewardPoolLock executes lock common rewards pool sc function and returns updated.
+func ExecuteCommonRewardPoolLock(ctx context.Context, id CommonRewardPool) (*CommonRewardPool, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	input := id.Encode()
+	hash, err := txn.ExecuteSmartContract(ctx, Address, CommonRewardPoolLockFuncName, string(input), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	common := new(CommonRewardPool)
+	if err := json.Unmarshal([]byte(txn.TransactionOutput), common); err != nil {
+		return nil, err
+	}
+
+	return common, nil
+}
+
+// ExecuteCommonRewardPoolUnlock executes lock common rewards pool sc function and returns updated.
+func ExecuteCommonRewardPoolUnlock(ctx context.Context, id CommonRewardPool) (*CommonRewardPool, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	input := id.Encode()
+	hash, err := txn.ExecuteSmartContract(ctx, Address, CommonRewardPoolUnlockFuncName, string(input), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	common := new(CommonRewardPool)
+	if err := json.Unmarshal([]byte(txn.TransactionOutput), common); err != nil {
+		return nil, err
+	}
+
+	return common, nil
+}
+
 // ExecuteSessionInit executes session init magma sc function and returns Session.
 func ExecuteSessionInit(ctx context.Context, consExtID, provExtID, apID, sessID string) (*Session, error) {
 	txn, err := transaction.NewTransactionEntity()

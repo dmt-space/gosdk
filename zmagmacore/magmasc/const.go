@@ -64,6 +64,11 @@ const (
 )
 
 const (
+	CommonRewardPoolLockFuncName   = "common_reward_pool_lock"
+	CommonRewardPoolUnlockFuncName = "common_reward_pool_unlock"
+)
+
+const (
 	// TermsExpiredDuration represents value for
 	// minimal duration of provider terms that will pass check it's expired.
 	TermsExpiredDuration = 1 * 60 // 1 minute
