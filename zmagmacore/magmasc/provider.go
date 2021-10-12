@@ -23,6 +23,11 @@ var (
 	_ util.Serializable = (*Provider)(nil)
 )
 
+// NewProvider creates initialized Provider.
+func NewProvider() *Provider {
+	return &Provider{Provider: &pb.Provider{}}
+}
+
 // Decode implements util.Serializable interface.
 func (m *Provider) Decode(blob []byte) error {
 	var provider Provider
@@ -84,5 +89,6 @@ func (m *Provider) ReadYAML(path string) error {
 
 	decoder := yaml.NewDecoder(f)
 
-	return decoder.Decode(m)
+	m.Provider = NewProvider().Provider
+	return decoder.Decode(m.Provider)
 }

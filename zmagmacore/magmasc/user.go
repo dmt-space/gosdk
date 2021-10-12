@@ -24,6 +24,11 @@ var (
 	_ util.Serializable = (*User)(nil)
 )
 
+// NewUser creates initialized User.
+func NewUser() *User {
+	return &User{User: &pb.User{}}
+}
+
 // Decode implements util.Serializable interface.
 func (m *User) Decode(blob []byte) error {
 	var user User
@@ -75,5 +80,6 @@ func (m *User) ReadYAML(path string) error {
 
 	decoder := yaml.NewDecoder(f)
 
+	m.User = NewUser().User
 	return decoder.Decode(m)
 }

@@ -18,7 +18,7 @@ type (
 	}
 )
 
-// NewAccessPoint returns a new constructed provider terms.
+// NewAccessPoint creates initialized AccessPoint.
 func NewAccessPoint() *AccessPoint {
 	return &AccessPoint{AccessPoint: &pb.AccessPoint{Terms: &pb.Terms{Qos: &pb.QoS{}}}}
 }
