@@ -46,7 +46,7 @@ func (m *Provider) Encode() []byte {
 
 // ExternalID returns the external id of Provider node.
 func (m *Provider) ExternalID() string {
-	return m.ExtID
+	return m.ExtId
 }
 
 // GetType returns Provider's type.
@@ -61,7 +61,7 @@ func (m *Provider) Validate() (err error) {
 	case m.Provider == nil:
 		err = errors.New(errCodeBadRequest, "provider is not present yet")
 
-	case m.ExtID == "":
+	case m.ExtId == "":
 		err = errors.New(errCodeBadRequest, "provider external id is required")
 
 	case m.Host == "":

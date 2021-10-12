@@ -21,14 +21,14 @@ func Test_User_Decode(t *testing.T) {
 	}
 
 	userIDInvalid := mockUser()
-	userIDInvalid.ID = "" // invalid user's id
+	userIDInvalid.Id = "" // invalid user's id
 	userIDBlobInvalid, err := json.Marshal(userIDInvalid.User)
 	if err != nil {
 		t.Fatalf("json.Marshal() error: %v | want: %v", err, nil)
 	}
 
 	consumerIDInvalid := mockUser()
-	consumerIDInvalid.ConsumerID = "" // invalid consumer's id
+	consumerIDInvalid.ConsumerId = "" // invalid consumer's id
 	consumerIDBlobInvalid, err := json.Marshal(consumerIDInvalid.User)
 	if err != nil {
 		t.Fatalf("json.Marshal() error: %v | want: %v", err, nil)
@@ -119,10 +119,10 @@ func Test_User_Validate(t *testing.T) {
 	t.Parallel()
 
 	userEmptyID := mockUser()
-	userEmptyID.ID = "" // invalid user's id
+	userEmptyID.Id = "" // invalid user's id
 
 	consumerEmptyID := mockUser()
-	consumerEmptyID.ConsumerID = "" // invalid consumer's id
+	consumerEmptyID.ConsumerId = "" // invalid consumer's id
 
 	tests := [3]struct {
 		name  string

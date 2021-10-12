@@ -11,18 +11,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func Test_Provider_Decode(t *testing.T) {
+func Test_AccessPoint_Decode(t *testing.T) {
 	t.Parallel()
 
-	prov := mockProvider()
-	blob, err := json.Marshal(prov)
+	accessPoint := mockAccessPoint()
+	blob, err := json.Marshal(accessPoint)
 	if err != nil {
 		t.Fatalf("json.Marshal() error: %v | want: %v", err, nil)
 	}
 
-	provInvalid := mockProvider()
-	provInvalid.ExtId = ""
-	extIDBlobInvalid, err := json.Marshal(provInvalid)
+	accessPointInvalid := mockAccessPoint()
+	accessPointInvalid.Id = ""
+	blobInvalid, err := json.Marshal(accessPointInvalid)
 	if err != nil {
 		t.Fatalf("json.Marshal() error: %v | want: %v", err, nil)
 	}
@@ -30,25 +30,25 @@ func Test_Provider_Decode(t *testing.T) {
 	tests := [3]struct {
 		name  string
 		blob  []byte
-		want  *Provider
+		want  *AccessPoint
 		error bool
 	}{
 		{
 			name:  "OK",
 			blob:  blob,
-			want:  prov,
+			want:  accessPoint,
 			error: false,
 		},
 		{
 			name:  "Decode_ERR",
 			blob:  []byte(":"), // invalid json
-			want:  &Provider{},
+			want:  &AccessPoint{},
 			error: true,
 		},
 		{
 			name:  "Ext_ID_Invalid_ERR",
-			blob:  extIDBlobInvalid,
-			want:  &Provider{},
+			blob:  blobInvalid,
+			want:  &AccessPoint{},
 			error: true,
 		},
 	}
@@ -58,35 +58,35 @@ func Test_Provider_Decode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := &Provider{}
+			got := &AccessPoint{}
 			if err := got.Decode(test.blob); (err != nil) != test.error {
 				t.Errorf("Decode() error: %v | want: %v", err, test.error)
 			}
-			if !reflect.DeepEqual(got, test.want) {
+			if !reflect.DeepEqual(got.Encode(), test.want.Encode()) {
 				t.Errorf("Decode() got: %#v | want: %#v", got, test.want)
 			}
 		})
 	}
 }
 
-func Test_Provider_Encode(t *testing.T) {
+func Test_AccessPoint_Encode(t *testing.T) {
 	t.Parallel()
 
-	prov := mockProvider()
-	blob, err := json.Marshal(prov)
+	accessPoint := mockAccessPoint()
+	blob, err := json.Marshal(accessPoint)
 	if err != nil {
 		t.Fatalf("json.Marshal() error: %v | want: %v", err, nil)
 	}
 
 	tests := [1]struct {
-		name string
-		prov *Provider
-		want []byte
+		name        string
+		accessPoint *AccessPoint
+		want        []byte
 	}{
 		{
-			name: "OK",
-			prov: prov,
-			want: blob,
+			name:        "OK",
+			accessPoint: accessPoint,
+			want:        blob,
 		},
 	}
 
@@ -95,54 +95,70 @@ func Test_Provider_Encode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := test.prov.Encode(); !reflect.DeepEqual(got, test.want) {
+			if got := test.accessPoint.Encode(); !reflect.DeepEqual(got, test.want) {
 				t.Errorf("Encode() got: %#v | want: %#v", got, test.want)
 			}
 		})
 	}
 }
 
-func Test_Provider_GetType(t *testing.T) {
+func Test_AccessPoint_GetType(t *testing.T) {
 	t.Parallel()
 
 	t.Run("OK", func(t *testing.T) {
 		t.Parallel()
 
-		prov := Provider{}
-		if got := prov.GetType(); got != providerType {
-			t.Errorf("GetType() got: %v | want: %v", got, providerType)
+		accessPoint := AccessPoint{}
+		if got := accessPoint.GetType(); got != accessPointType {
+			t.Errorf("GetType() got: %v | want: %v", got, accessPointType)
 		}
 	})
 }
 
-func Test_Provider_Validate(t *testing.T) {
+func Test_AccessPoint_Validate(t *testing.T) {
 	t.Parallel()
 
-	provEmptyExtID := mockProvider()
-	provEmptyExtID.ExtId = ""
+	accessPointNil := mockAccessPoint()
+	accessPointNil.AccessPoint = nil
 
-	provEmptyHost := mockProvider()
-	provEmptyHost.Host = ""
+	accessPointTermsNil := mockAccessPoint()
+	accessPointTermsNil.Terms = nil
 
-	tests := [3]struct {
-		name  string
-		prov  *Provider
-		error bool
+	accessPointEmptyID := mockAccessPoint()
+	accessPointEmptyID.Id = ""
+
+	accessPointEmptyProviderExtID := mockAccessPoint()
+	accessPointEmptyProviderExtID.ProviderExtId = ""
+
+	tests := [5]struct {
+		name        string
+		accessPoint *AccessPoint
+		error       bool
 	}{
 		{
-			name:  "OK",
-			prov:  mockProvider(),
-			error: false,
+			name:        "OK",
+			accessPoint: mockAccessPoint(),
+			error:       false,
 		},
 		{
-			name:  "Empty_Ext_ID_ERR",
-			prov:  provEmptyExtID,
-			error: true,
+			name:        "Access_Point_Is_Nil_ERR",
+			accessPoint: accessPointNil,
+			error:       true,
 		},
 		{
-			name:  "Empty_Host_ERR",
-			prov:  provEmptyHost,
-			error: true,
+			name:        "Terms_Is_Nil_ERR",
+			accessPoint: accessPointTermsNil,
+			error:       true,
+		},
+		{
+			name:        "Empty_ID_ERR",
+			accessPoint: accessPointEmptyID,
+			error:       true,
+		},
+		{
+			name:        "Empty_Provider_Ext_ID_ERR",
+			accessPoint: accessPointEmptyProviderExtID,
+			error:       true,
 		},
 	}
 
@@ -151,24 +167,24 @@ func Test_Provider_Validate(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			if err := test.prov.Validate(); (err != nil) != test.error {
+			if err := test.accessPoint.Validate(); (err != nil) != test.error {
 				t.Errorf("Validate() error: %v | want: %v", err, test.error)
 			}
 		})
 	}
 }
 
-func Test_Provider_ReadYAML(t *testing.T) {
+func Test_AccessPoint_ReadYAML(t *testing.T) {
 	t.Parallel()
 
 	var (
 		buf = bytes.NewBuffer(nil)
 		enc = yaml.NewEncoder(buf)
 
-		prov = mockProvider()
+		accessPoint = mockAccessPoint()
 	)
 
-	err := enc.Encode(prov)
+	err := enc.Encode(accessPoint.AccessPoint)
 	if err != nil {
 		t.Fatalf("yaml Encode() error: %v | want: %v", err, nil)
 	}
@@ -180,12 +196,12 @@ func Test_Provider_ReadYAML(t *testing.T) {
 
 	tests := [1]struct {
 		name  string
-		want  *Provider
+		want  *AccessPoint
 		error bool
 	}{
 		{
 			name:  "OK",
-			want:  prov,
+			want:  accessPoint,
 			error: false,
 		},
 	}
@@ -195,7 +211,7 @@ func Test_Provider_ReadYAML(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := &Provider{}
+			got := &AccessPoint{}
 			if err := got.ReadYAML(path); (err != nil) != test.error {
 				t.Errorf("ReadYAML() error: %v | want: %v", err, nil)
 			}

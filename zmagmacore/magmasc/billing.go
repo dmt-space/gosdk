@@ -25,14 +25,14 @@ var (
 
 // CalcAmount calculates and sets the billing Amount value by given price.
 // NOTE: the cost value must be represented in token units per megabyte.
-func (m *Billing) CalcAmount(terms Terms) {
-	price := float64(terms.GetPrice())
+func (m *Billing) CalcAmount(accessPoint *AccessPoint) {
+	price := float64(accessPoint.TermsGetPrice())
 	if price > 0 && m.DataMarker != nil && m.DataMarker.DataUsage != nil {
 		// data usage summary in megabytes
 		mbps := float64(m.DataMarker.DataUsage.DownloadBytes+m.DataMarker.DataUsage.UploadBytes) / million
 		m.Amount = int64(mbps * price) // rounded amount of megabytes multiplied by price
 	}
-	if minCost := terms.GetMinCost(); m.Amount < minCost {
+	if minCost := accessPoint.TermsGetMinCost(); m.Amount < minCost {
 		m.Amount = minCost
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/0chain/gosdk/zmagmacore/magmasc/pb"
 	"github.com/0chain/gosdk/zmagmacore/time"
 )
@@ -12,38 +14,38 @@ import (
 func Test_Billing_CalcAmount(t *testing.T) {
 	t.Parallel()
 
-	bill, terms := mockBilling(), mockTerms()
+	bill, accessPoint := mockBilling(), mockAccessPoint()
 
-	termsMinCost := mockTerms()
-	termsMinCost.MinCost = 1000
+	accessPointTermsMinCost := mockAccessPoint()
+	accessPointTermsMinCost.Terms.MinCost = 1000
 
 	// data usage summary in megabytes
 	mbps := float64(bill.DataMarker.DataUsage.UploadBytes+bill.DataMarker.DataUsage.DownloadBytes) / million
-	want := int64(mbps * float64(terms.GetPrice()))
+	want := int64(mbps * float64(accessPoint.TermsGetPrice()))
 
 	tests := [3]struct {
-		name  string
-		bill  Billing
-		terms Terms
-		want  int64
+		name        string
+		bill        Billing
+		accessPoint *AccessPoint
+		want        int64
 	}{
 		{
-			name:  "OK",
-			bill:  bill,
-			terms: terms,
-			want:  want,
+			name:        "OK",
+			bill:        bill,
+			accessPoint: accessPoint,
+			want:        want,
 		},
 		{
-			name:  "Zero_Amount_OK",
-			bill:  mockBilling(),
-			terms: Terms{},
-			want:  0,
+			name:        "Zero_Amount_OK",
+			bill:        mockBilling(),
+			accessPoint: NewAccessPoint(),
+			want:        0,
 		},
 		{
-			name:  "Min_Cost_Amount_OK",
-			bill:  mockBilling(),
-			terms: termsMinCost,
-			want:  termsMinCost.GetMinCost(),
+			name:        "Min_Cost_Amount_OK",
+			bill:        mockBilling(),
+			accessPoint: accessPointTermsMinCost,
+			want:        accessPointTermsMinCost.TermsGetMinCost(),
 		},
 	}
 
@@ -56,7 +58,7 @@ func Test_Billing_CalcAmount(t *testing.T) {
 				t.Errorf("Billing.Amount is: %v | want: %v", test.bill.Amount, 0)
 			}
 
-			test.bill.CalcAmount(test.terms)
+			test.bill.CalcAmount(test.accessPoint)
 			if test.bill.Amount != test.want { // must be the same value with test.want after called CalcAmount()
 				t.Errorf("GetVolume() got: %v | want: %v", test.bill.Amount, test.want)
 			}
@@ -74,7 +76,7 @@ func Test_Billing_Decode(t *testing.T) {
 	}
 
 	billCompleted := mockBilling()
-	billCompleted.CalcAmount(mockTerms())
+	billCompleted.CalcAmount(mockAccessPoint())
 	billCompleted.CompletedAt = time.Now()
 	blobCompleted, err := json.Marshal(billCompleted)
 	if err != nil {
@@ -102,7 +104,7 @@ func Test_Billing_Decode(t *testing.T) {
 		{
 			name:  "Decode_ERR",
 			blob:  []byte(":"), // invalid json
-			want:  Billing{},
+			want:  Billing{DataMarker: NewDataMarker()},
 			error: true,
 		},
 	}
@@ -112,14 +114,13 @@ func Test_Billing_Decode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := Billing{}
+			got := &Billing{DataMarker: NewDataMarker()}
 			if err := got.Decode(test.blob); (err != nil) != test.error {
 				t.Errorf("Decode() error: %v | want: %v", err, test.error)
 				return
 			}
-			if !reflect.DeepEqual(got, test.want) {
-				t.Errorf("Decode() got: %#v | want: %#v", got, test.want)
-			}
+
+			assert.Equal(t, test.want.Encode(), got.Encode(), "Decode()")
 		})
 	}
 }

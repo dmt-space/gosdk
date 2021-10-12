@@ -1,0 +1,11 @@
+syntax = "proto3";
+package zchain.pb.magmasc;
+
+option go_package = "github.com/0chain/gosdk/zmagmacore/magmasc/pb";
+
+// Quality Of Service data
+message QoS {
+  float download_mbps = 1;  // @gotags: json:"download_mbps" yaml:"download_mbps"
+  float upload_mbps = 2;    // @gotags: json:"upload_mbps" yaml:"upload_mbps"
+  float latency = 3;        // @gotags: json:"latency"
+}

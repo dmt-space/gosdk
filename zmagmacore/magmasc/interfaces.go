@@ -34,7 +34,7 @@ var (
 
 // IsNodeRegistered implements registration.Node interface.
 func (m *Provider) IsNodeRegistered() (bool, error) {
-	return IsProviderRegisteredRP(m.ExtID)
+	return IsProviderRegisteredRP(m.ExtId)
 }
 
 // Register implements registration.Node interface.

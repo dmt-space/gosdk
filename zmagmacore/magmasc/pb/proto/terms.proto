@@ -1,0 +1,35 @@
+syntax = "proto3";
+package zchain.pb.magmasc;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+import "zmagmacore/magmasc/pb/proto/qos.proto";
+
+option go_package = "github.com/0chain/gosdk/zmagmacore/magmasc/pb";
+
+// Terms represents a provider and service terms.
+message Terms {
+  // tokens per Megabyte
+  float price = 1;                                // @gotags: json:"price" yaml:"price"
+  // price change on auto update
+  float price_auto_update = 2;                    // @gotags: yaml:"price_auto_update"
+  // minimal cost for a session
+  float min_cost = 3;                             // @gotags: json:"min_cost" yaml:"min_cost"
+  // bytes per a session
+  int64 volume = 4;                               // @gotags: json:"volume" yaml:"volume"
+  // quality of service guarantee
+  QoS qos = 5;                                    // @gotags: json:"qos" yaml:"qos"
+  // qos change on auto update
+  QoSAutoUpdate qos_auto_update = 6;              // @gotags: yaml:"qos_auto_update"
+  // duration in seconds to prolong the terms
+  google.protobuf.Duration prolong_duration = 7;  // @gotags: yaml"prolong_duration"
+  // timestamp till a session valid
+  google.protobuf.Timestamp expired_at = 8;       // @gotags: yaml:"expired_at"
+}
+
+// QoSAutoUpdate represents data of qos terms on auto update.
+message QoSAutoUpdate {
+  float download_mbps = 1;  // @gotags: json:"download_mbps" yaml:"download_mbps"
+  float upload_mbps = 2;    // @gotags: json:"upload_mbps" yaml:"upload_mbps"
+}

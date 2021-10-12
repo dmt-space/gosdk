@@ -86,13 +86,22 @@ install-herumi-ubuntu:
 generate-proto:
 	@echo "Compiling protobuf files..."
 
-	@protoc -I=. \
+	@mkdir tmp && \
+		cd tmp && \
+		git clone https://github.com/protocolbuffers/protobuf.git && \
+		cd ..
+
+	@protoc \
+		-I=. \
+		-I=tmp/protobuf/src \
     	--go_opt=module="github.com/0chain/gosdk" \
     	--go-grpc_opt=module="github.com/0chain/gosdk" \
     	--go-grpc_out=. \
     	--go_out=. \
-    	--proto_path=zmagmacore/magmasc/pb/proto zmagmacore/magmasc/pb/proto/*.proto && \
-        go get github.com/favadi/protoc-go-inject-tag && \
-        protoc-go-inject-tag -input=zmagmacore/magmasc/pb/*.pb.go
+    	--proto_path=zmagmacore/magmasc/pb/proto zmagmacore/magmasc/pb/proto/*.proto
+
+	@rm -rf tmp && \
+    go get github.com/favadi/protoc-go-inject-tag && \
+    protoc-go-inject-tag -input=zmagmacore/magmasc/pb/*.pb.go
 
 	@echo "Compiling completed."

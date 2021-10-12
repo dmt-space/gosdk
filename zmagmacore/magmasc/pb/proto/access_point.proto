@@ -1,0 +1,13 @@
+syntax = "proto3";
+package zchain.pb.magmasc;
+
+import "zmagmacore/magmasc/pb/proto/terms.proto";
+
+option go_package = "github.com/0chain/gosdk/zmagmacore/magmasc/pb";
+
+// AccessPoint represents access point node stored in blockchain.
+message AccessPoint {
+  string id = 1;              // @gotags: json:"id" yaml:"id"
+  string provider_ext_id = 2; // @gotags: json:"provider_ext_id" yaml:"provider_ext_id"
+  Terms terms = 3;            // @gotags: yaml:"terms"
+}

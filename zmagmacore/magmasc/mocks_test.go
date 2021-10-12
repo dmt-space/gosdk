@@ -4,8 +4,10 @@ import (
 	"encoding/hex"
 	"time"
 
-	magma "github.com/magma/augmented-networks/accounting/protos"
 	"golang.org/x/crypto/sha3"
+
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/0chain/gosdk/zmagmacore/crypto"
 	"github.com/0chain/gosdk/zmagmacore/magmasc/pb"
@@ -18,7 +20,7 @@ func mockSession() *Session {
 
 	return &Session{
 		SessionID:   billing.DataMarker.DataUsage.SessionId,
-		AccessPoint: &AccessPoint{ID: "id:access:point:" + now},
+		AccessPoint: &AccessPoint{AccessPoint: &pb.AccessPoint{Id: "id:access:point:" + now}},
 		Billing:     billing,
 		Consumer:    mockConsumer(),
 		Provider:    mockProvider(),
@@ -54,26 +56,10 @@ func mockProvider() *Provider {
 	now := time.Now().Format(time.RFC3339Nano)
 	return &Provider{
 		&pb.Provider{
-			ID:    "id:provider:" + now,
-			ExtID: "id:provider:external:" + now,
+			Id:    "id:provider:" + now,
+			ExtId: "id:provider:external:" + now,
 			Host:  "localhost:8020",
 		},
-	}
-}
-
-func mockTerms() Terms {
-	return Terms{
-		Price:           0.1,
-		PriceAutoUpdate: 0.001,
-		MinCost:         0.5,
-		Volume:          0,
-		QoS:             mockQoS(),
-		QoSAutoUpdate: &QoSAutoUpdate{
-			DownloadMbps: 0.001,
-			UploadMbps:   0.001,
-		},
-		ProlongDuration: 1 * 60 * 60,              // 1 hour
-		ExpiredAt:       ts.Now() + (1 * 60 * 60), // 1 hour from now
 	}
 }
 
@@ -109,10 +95,11 @@ func mockTokenPoolTransfer() TokenPoolTransfer {
 	}
 }
 
-func mockQoS() *magma.QoS {
-	return &magma.QoS{
+func mockQoS() *pb.QoS {
+	return &pb.QoS{
 		DownloadMbps: 5.4321,
 		UploadMbps:   1.2345,
+		Latency:      0.12345,
 	}
 }
 
@@ -136,12 +123,35 @@ func mockDataMarker() *DataMarker {
 	}
 }
 
+func mockAccessPoint() *AccessPoint {
+	now := time.Now().Format(time.RFC3339Nano)
+	return &AccessPoint{
+		AccessPoint: &pb.AccessPoint{
+			Id:            "id:provider:" + now,
+			ProviderExtId: "id:provider:external:" + now,
+			Terms: &pb.Terms{
+				Price:           0.1,
+				PriceAutoUpdate: 0.001,
+				MinCost:         0.5,
+				Volume:          0,
+				Qos:             mockQoS(),
+				QosAutoUpdate: &pb.QoSAutoUpdate{
+					DownloadMbps: 0.001,
+					UploadMbps:   0.001,
+				},
+				ProlongDuration: &durationpb.Duration{Seconds: 1 * 60 * 60},                       // 1 hour
+				ExpiredAt:       &timestamppb.Timestamp{Seconds: int64(ts.Now() + (1 * 60 * 60))}, // 1 hour from now
+			},
+		},
+	}
+}
+
 func mockUser() *User {
 	now := time.Now().Format(time.RFC3339Nano)
 	return &User{
 		User: &pb.User{
-			ID:         "id:user:" + now,
-			ConsumerID: "id:consumer:" + now,
+			Id:         "id:user:" + now,
+			ConsumerId: "id:consumer:" + now,
 		},
 	}
 }

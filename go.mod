@@ -21,7 +21,6 @@ require (
 	github.com/klauspost/reedsolomon v1.9.11
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7
-	github.com/magma/augmented-networks/accounting/protos v0.1.1
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

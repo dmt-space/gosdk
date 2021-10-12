@@ -30,6 +30,11 @@ var (
 	_ util.Serializable = (*DataMarker)(nil)
 )
 
+// NewDataMarker returns a new constructed provider terms.
+func NewDataMarker() *DataMarker {
+	return &DataMarker{DataMarker: &pb.DataMarker{DataUsage: &pb.DataUsage{}, Qos: &pb.QoS{}}}
+}
+
 // Decode implements util.Serializable interface.
 func (m *DataMarker) Decode(blob []byte) error {
 	var dataMarker DataMarker

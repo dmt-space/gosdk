@@ -120,13 +120,13 @@ func Test_Session_Validate(t *testing.T) {
 	sessionEmptySessionID.SessionID = ""
 
 	sessionEmptyAccessPointID := mockSession()
-	sessionEmptyAccessPointID.AccessPoint.ID = ""
+	sessionEmptyAccessPointID.AccessPoint.Id = ""
 
 	sessionEmptyConsumerExtID := mockSession()
 	sessionEmptyConsumerExtID.Consumer.ExtID = ""
 
 	sessionEmptyProviderExtID := mockSession()
-	sessionEmptyProviderExtID.Provider.ExtID = ""
+	sessionEmptyProviderExtID.Provider.ExtId = ""
 
 	tests := [5]struct {
 		name    string

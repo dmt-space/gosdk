@@ -26,7 +26,7 @@ func ExecuteSessionStart(ctx context.Context, consExtID, provExtID, sessID strin
 		},
 		Provider: &Provider{
 			Provider: &pb.Provider{
-				ExtID: provExtID,
+				ExtId: provExtID,
 			},
 		},
 		SessionID:   sessID,
@@ -42,7 +42,7 @@ func ExecuteSessionStart(ctx context.Context, consExtID, provExtID, sessID strin
 		Address,
 		ConsumerSessionStartFuncName,
 		string(input),
-		session.AccessPoint.Terms.GetAmount()*billRatio,
+		session.AccessPoint.TermsGetAmount()*billRatio,
 	)
 	if err != nil {
 		return nil, err
@@ -310,7 +310,7 @@ func ExecuteAccessPointRegister(ctx context.Context, accessPoint *AccessPoint) (
 	if err != nil {
 		return nil, err
 	}
-	txnHash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointRegisterFuncName, string(input), accessPoint.MinStake)
+	txnHash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointRegisterFuncName, string(input), 0)
 	if err != nil {
 		return nil, err
 	}
@@ -321,22 +321,28 @@ func ExecuteAccessPointRegister(ctx context.Context, accessPoint *AccessPoint) (
 	}
 
 	accessPoint = &AccessPoint{}
-	if err = json.Unmarshal([]byte(txn.TransactionOutput), accessPoint); err != nil {
+	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
 		return nil, err
 	}
 
 	return accessPoint, nil
 }
 
-// ExecuteAccessPointUpdate executes update access point magma sc function and returns updated AccessPoint.
-func ExecuteAccessPointUpdate(ctx context.Context, accessPoint *AccessPoint) (*AccessPoint, error) {
+// ExecuteAccessPointStake stakes the access point tokens of the magma sc and returns AccessPoint.
+func ExecuteAccessPointStake(ctx context.Context, accessPoint *AccessPoint) (*AccessPoint, error) {
+	minStake, err := AccessPointMinStakeFetch()
+
+	if err != nil {
+		return nil, err
+	}
+
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
 	}
 
 	input := accessPoint.Encode()
-	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointUpdateFuncName, string(input), accessPoint.MinStake)
+	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointStakeFuncName, string(input), minStake)
 	if err != nil {
 		return nil, err
 	}
@@ -346,8 +352,85 @@ func ExecuteAccessPointUpdate(ctx context.Context, accessPoint *AccessPoint) (*A
 		return nil, err
 	}
 
-	accessPoint = new(AccessPoint)
-	if err := json.Unmarshal([]byte(txn.TransactionOutput), accessPoint); err != nil {
+	accessPoint = &AccessPoint{}
+	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
+		return nil, err
+	}
+
+	return accessPoint, nil
+}
+
+// ExecuteAccessPointUnstake unstaked access point tokens of the magma sc and returns AccessPoint.
+func ExecuteAccessPointUnstake(ctx context.Context, accessPoint *AccessPoint) (*AccessPoint, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	input := accessPoint.Encode()
+	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointUnStakeFuncName, string(input), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	accessPoint = &AccessPoint{}
+	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
+		return nil, err
+	}
+
+	return accessPoint, nil
+}
+
+// ExecuteAccessPointUpdateTerms executes update access point terms magma sc function and returns updated AccessPoint.
+func ExecuteAccessPointUpdateTerms(ctx context.Context, accessPoint *AccessPoint) (*AccessPoint, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	input := accessPoint.Encode()
+	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointUpdateTermsFuncName, string(input), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	accessPoint = &AccessPoint{}
+	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
+		return nil, err
+	}
+
+	return accessPoint, nil
+}
+
+// ExecuteAccessPointChangeProvider performs the function of changing the magma sc access point provider and returns the updated AccessPoint.
+func ExecuteAccessPointChangeProvider(ctx context.Context) (*AccessPoint, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointChangeProviderFuncName, "", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	accessPoint := &AccessPoint{}
+	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
 		return nil, err
 	}
 

@@ -52,10 +52,10 @@ func (m *User) Validate() (err error) {
 	case m.User == nil:
 		err = errors.New(errCodeBadRequest, "user is not present yet")
 
-	case m.ID == "":
+	case m.Id == "":
 		err = errors.New(errCodeBadRequest, "user id is required")
 
-	case m.ConsumerID == "":
+	case m.ConsumerId == "":
 		err = errors.New(errCodeBadRequest, "user consumer id is required")
 
 	default:

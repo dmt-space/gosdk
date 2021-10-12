@@ -73,7 +73,7 @@ func (s *Session) Key() []byte {
 
 // PoolBalance implements PoolConfigurator interface.
 func (s *Session) PoolBalance() int64 {
-	return s.AccessPoint.Terms.GetAmount()
+	return s.AccessPoint.TermsGetAmount()
 }
 
 // PoolID implements PoolConfigurator interface.
@@ -93,7 +93,7 @@ func (s *Session) PoolPayerID() string {
 
 // PoolPayeeID implements PoolConfigurator interface.
 func (s *Session) PoolPayeeID() string {
-	return s.AccessPoint.ID
+	return s.AccessPoint.Id
 }
 
 // Validate checks Session for correctness.
@@ -103,13 +103,13 @@ func (s *Session) Validate() (err error) {
 	case s.SessionID == "":
 		err = errors.New(errCodeBadRequest, "session id is required")
 
-	case s.AccessPoint == nil || s.AccessPoint.ID == "":
+	case s.AccessPoint == nil || s.AccessPoint.Id == "":
 		err = errors.New(errCodeBadRequest, "access point id is required")
 
 	case s.Consumer == nil || s.Consumer.ExtID == "":
 		err = errors.New(errCodeBadRequest, "consumer external id is required")
 
-	case s.Provider == nil || s.Provider.ExtID == "":
+	case s.Provider == nil || s.Provider.ExtId == "":
 		err = errors.New(errCodeBadRequest, "provider external id is required")
 
 	default:

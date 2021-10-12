@@ -110,9 +110,21 @@ const (
 	// Used to register bandwidth-marketplace's node.
 	AccessPointRegisterFuncName = "access_point_register"
 
-	// AccessPointUpdateFuncName represents MagmaSC function.
-	// Used to update access point node info.
-	AccessPointUpdateFuncName = "access_point_update"
+	// AccessPointUpdateTermsFuncName represents MagmaSC function.
+	// Used to update terms access point node.
+	AccessPointUpdateTermsFuncName = "access_point_update_terms"
+
+	// AccessPointChangeProviderFuncName represents MagmaSC function.
+	// Used to change access point provider.
+	AccessPointChangeProviderFuncName = "access_point_change_provider"
+
+	// AccessPointStakeFuncName represents MagmaSC function.
+	// Used to stake tokens to MagmaSC.
+	AccessPointStakeFuncName = "access_point_stake"
+
+	// AccessPointUnStakeFuncName represents MagmaSC function.
+	// Used for unstake tokens to MagmaSC.
+	AccessPointUnStakeFuncName = "access_point_unstake"
 
 	// accessPointType contents a value of type of Access Point's node
 	accessPointType = "access-point"
