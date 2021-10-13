@@ -34,7 +34,6 @@ func (m *AccessPoint) Decode(blob []byte) error {
 	}
 
 	m.AccessPoint = accessPoint.AccessPoint
-	m.Terms = accessPoint.Terms
 
 	return nil
 }
@@ -53,21 +52,8 @@ func (m *AccessPoint) GetType() string {
 // Validate checks the AccessPoint for correctness.
 // If it is not return errInvalidAccessPoint.
 func (m *AccessPoint) Validate() (err error) {
-	switch { // is invalid
-	case m.AccessPoint == nil:
-		return errors.New(errCodeBadRequest, "accessPoint is not present yet")
-
-	case m.Terms == nil:
-		err = errors.New(errCodeBadRequest, "terms at accessPoint is not present yet")
-
-	case m.Id == "":
-		err = errors.New(errCodeBadRequest, "accessPoint external id is required")
-
-	case m.ProviderExtId == "":
-		err = errors.New(errCodeBadRequest, "accessPoint provider external id is required")
-	}
-	if err != nil {
-		return errInvalidAccessPoint.Wrap(err)
+	if m.AccessPoint == nil {
+		return errors.New(errCodeBadRequest, "access point is not present yet")
 	}
 
 	if err = m.TermsValidate(); err != nil {
