@@ -73,7 +73,7 @@ func (s *Session) Key() []byte {
 
 // PoolBalance implements PoolConfigurator interface.
 func (s *Session) PoolBalance() int64 {
-	return s.AccessPoint.TermsGetAmount()
+	return s.AccessPoint.TermsGetAmount() * s.Billing.Ratio
 }
 
 // PoolID implements PoolConfigurator interface.

@@ -15,6 +15,7 @@ type (
 		Amount      int64          `json:"amount"`
 		DataMarker  *DataMarker    `json:"data_marker"`
 		CompletedAt time.Timestamp `json:"completed_at,omitempty"`
+		Ratio       int64          `json:"ratio"`
 	}
 )
 
