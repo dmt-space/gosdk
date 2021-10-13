@@ -329,7 +329,7 @@ func ExecuteAccessPointRegister(ctx context.Context, accessPoint *AccessPoint) (
 }
 
 // ExecuteAccessPointStake stakes the access point tokens of the magma sc and returns AccessPoint.
-func ExecuteAccessPointStake(ctx context.Context, accessPoint *AccessPoint) (*AccessPoint, error) {
+func ExecuteAccessPointStake(ctx context.Context) (*AccessPoint, error) {
 	minStake, err := AccessPointMinStakeFetch()
 
 	if err != nil {
@@ -341,8 +341,7 @@ func ExecuteAccessPointStake(ctx context.Context, accessPoint *AccessPoint) (*Ac
 		return nil, err
 	}
 
-	input := accessPoint.Encode()
-	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointStakeFuncName, string(input), minStake)
+	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointStakeFuncName, "", minStake)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +351,7 @@ func ExecuteAccessPointStake(ctx context.Context, accessPoint *AccessPoint) (*Ac
 		return nil, err
 	}
 
-	accessPoint = &AccessPoint{}
+	accessPoint := &AccessPoint{}
 	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
 		return nil, err
 	}
@@ -361,14 +360,13 @@ func ExecuteAccessPointStake(ctx context.Context, accessPoint *AccessPoint) (*Ac
 }
 
 // ExecuteAccessPointUnstake unstaked access point tokens of the magma sc and returns AccessPoint.
-func ExecuteAccessPointUnstake(ctx context.Context, accessPoint *AccessPoint) (*AccessPoint, error) {
+func ExecuteAccessPointUnstake(ctx context.Context) (*AccessPoint, error) {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
 	}
 
-	input := accessPoint.Encode()
-	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointUnStakeFuncName, string(input), 0)
+	hash, err := txn.ExecuteSmartContract(ctx, Address, AccessPointUnStakeFuncName, "", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +376,7 @@ func ExecuteAccessPointUnstake(ctx context.Context, accessPoint *AccessPoint) (*
 		return nil, err
 	}
 
-	accessPoint = &AccessPoint{}
+	accessPoint := &AccessPoint{}
 	if err = accessPoint.Decode([]byte(txn.TransactionOutput)); err != nil {
 		return nil, err
 	}
