@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/0chain/gosdk/zmagmacore/magmasc/pb"
 	"github.com/0chain/gosdk/zmagmacore/transaction"
 )
 
 // ExecuteSessionStart starts session for provided IDs by executing ConsumerSessionStartFuncName.
-func ExecuteSessionStart(ctx context.Context, consExtID, provExtID, sessID string, accessPoint *AccessPoint) (*Session, error) {
+func ExecuteSessionStart(ctx context.Context, session *Session) (*Session, error) {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		return nil, err
@@ -20,28 +19,11 @@ func ExecuteSessionStart(ctx context.Context, consExtID, provExtID, sessID strin
 		return nil, err
 	}
 
-	session := &Session{
-		Consumer: &Consumer{
-			ExtID: consExtID,
-		},
-		Provider: &Provider{
-			Provider: &pb.Provider{
-				ExtId: provExtID,
-			},
-		},
-		SessionID:   sessID,
-		AccessPoint: accessPoint,
-	}
-
-	input, err := json.Marshal(&session)
-	if err != nil {
-		return nil, err
-	}
 	txnHash, err := txn.ExecuteSmartContract(
 		ctx,
 		Address,
 		ConsumerSessionStartFuncName,
-		string(input),
+		string(session.Encode()),
 		session.AccessPoint.TermsGetAmount()*billRatio,
 	)
 	if err != nil {

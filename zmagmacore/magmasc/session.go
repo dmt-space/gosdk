@@ -109,9 +109,6 @@ func (s *Session) Validate() (err error) {
 	case s.Consumer == nil || s.Consumer.ExtID == "":
 		err = errors.New(errCodeBadRequest, "consumer external id is required")
 
-	case s.Provider == nil || s.Provider.ExtId == "":
-		err = errors.New(errCodeBadRequest, "provider external id is required")
-
 	default:
 		return nil // is valid
 	}
