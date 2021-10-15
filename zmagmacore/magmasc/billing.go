@@ -30,7 +30,7 @@ func (m *Billing) CalcAmount(accessPoint *AccessPoint) {
 	price := float64(accessPoint.TermsGetPrice())
 	if price > 0 && m.DataMarker != nil && m.DataMarker.DataUsage != nil {
 		// data usage summary in megabytes
-		mbps := float64(m.DataMarker.DataUsage.DownloadBytes+m.DataMarker.DataUsage.UploadBytes) / million
+		mbps := float64(m.DataMarker.DataUsage.DownloadBytes+m.DataMarker.DataUsage.UploadBytes) / Million
 		m.Amount = int64(mbps * price) // rounded amount of megabytes multiplied by price
 	}
 	if minCost := accessPoint.TermsGetMinCost(); m.Amount < minCost {
@@ -42,7 +42,7 @@ func (m *Billing) CalcAmount(accessPoint *AccessPoint) {
 func (m *Billing) Decode(blob []byte) error {
 	var bill Billing
 	if err := json.Unmarshal(blob, &bill); err != nil {
-		return errDecodeData.Wrap(err)
+		return ErrDecodeData.Wrap(err)
 	}
 
 	m.Amount = bill.Amount
@@ -64,20 +64,20 @@ func (m *Billing) Validate(dataUsage *pb.DataUsage) (err error) {
 
 	switch {
 	case dataUsage == nil:
-		err = errors.New(errCodeBadRequest, "data usage required")
+		err = errors.New(ErrCodeBadRequest, "data usage required")
 
 	case !isBillDataUsageNil && m.DataMarker.DataUsage.SessionTime > dataUsage.SessionTime:
-		err = errors.New(errCodeBadRequest, "invalid session time")
+		err = errors.New(ErrCodeBadRequest, "invalid session time")
 
 	case !isBillDataUsageNil && m.DataMarker.DataUsage.UploadBytes > dataUsage.UploadBytes:
-		err = errors.New(errCodeBadRequest, "invalid upload bytes")
+		err = errors.New(ErrCodeBadRequest, "invalid upload bytes")
 
 	case !isBillDataUsageNil && m.DataMarker.DataUsage.DownloadBytes > dataUsage.DownloadBytes:
-		err = errors.New(errCodeBadRequest, "invalid download bytes")
+		err = errors.New(ErrCodeBadRequest, "invalid download bytes")
 
 	default:
 		return nil // is valid - everything is ok
 	}
 
-	return errInvalidDataUsage.Wrap(err)
+	return ErrInvalidDataUsage.Wrap(err)
 }

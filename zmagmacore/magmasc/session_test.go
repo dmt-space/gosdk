@@ -125,10 +125,7 @@ func Test_Session_Validate(t *testing.T) {
 	sessionEmptyConsumerExtID := mockSession()
 	sessionEmptyConsumerExtID.Consumer.ExtID = ""
 
-	sessionEmptyProviderExtID := mockSession()
-	sessionEmptyProviderExtID.Provider.ExtId = ""
-
-	tests := [5]struct {
+	tests := [4]struct {
 		name    string
 		session *Session
 		error   bool
@@ -151,11 +148,6 @@ func Test_Session_Validate(t *testing.T) {
 		{
 			name:    "Empty_Consumer_Ext_ID",
 			session: sessionEmptyConsumerExtID,
-			error:   true,
-		},
-		{
-			name:    "Empty_Provider_Txt_ID",
-			session: sessionEmptyProviderExtID,
 			error:   true,
 		},
 	}

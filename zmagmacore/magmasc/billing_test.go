@@ -20,7 +20,7 @@ func Test_Billing_CalcAmount(t *testing.T) {
 	accessPointTermsMinCost.Terms.MinCost = 1000
 
 	// data usage summary in megabytes
-	mbps := float64(bill.DataMarker.DataUsage.UploadBytes+bill.DataMarker.DataUsage.DownloadBytes) / million
+	mbps := float64(bill.DataMarker.DataUsage.UploadBytes+bill.DataMarker.DataUsage.DownloadBytes) / Million
 	want := int64(mbps * float64(accessPoint.TermsGetPrice()))
 
 	tests := [3]struct {

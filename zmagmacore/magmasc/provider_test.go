@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
@@ -102,19 +103,6 @@ func Test_Provider_Encode(t *testing.T) {
 	}
 }
 
-func Test_Provider_GetType(t *testing.T) {
-	t.Parallel()
-
-	t.Run("OK", func(t *testing.T) {
-		t.Parallel()
-
-		prov := Provider{}
-		if got := prov.GetType(); got != providerType {
-			t.Errorf("GetType() got: %v | want: %v", got, providerType)
-		}
-	})
-}
-
 func Test_Provider_Validate(t *testing.T) {
 	t.Parallel()
 
@@ -168,7 +156,7 @@ func Test_Provider_ReadYAML(t *testing.T) {
 		prov = mockProvider()
 	)
 
-	err := enc.Encode(prov)
+	err := enc.Encode(prov.Provider)
 	if err != nil {
 		t.Fatalf("yaml Encode() error: %v | want: %v", err, nil)
 	}
@@ -199,9 +187,7 @@ func Test_Provider_ReadYAML(t *testing.T) {
 			if err := got.ReadYAML(path); (err != nil) != test.error {
 				t.Errorf("ReadYAML() error: %v | want: %v", err, nil)
 			}
-			if !reflect.DeepEqual(got, test.want) {
-				t.Errorf("ReadYAML() got: %#v | want: %#v", got, test.want)
-			}
+			assert.Equal(t, test.want, got)
 		})
 	}
 }

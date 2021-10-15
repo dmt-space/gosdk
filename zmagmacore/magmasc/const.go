@@ -15,6 +15,24 @@ const (
 )
 
 const (
+	// RewardPoolLockFuncName represents the name of MagmaSmartContract function.
+	// When function is called it means that wallet creates a new locked token pool.
+	RewardPoolLockFuncName = "reward_pool_lock"
+
+	// RewardPoolUnlockFuncName represents the name of MagmaSmartContract function.
+	// When function is called it means that wallet refunds a locked token pool.
+	RewardPoolUnlockFuncName = "reward_pool_unlock"
+
+	// RewardPoolExistRP represents MagmaSC relative path.
+	// Used to check existence of reward pool.
+	RewardPoolExistRP = "/rewardPoolExist"
+
+	// RewardPoolFetchRP represents MagmaSC relative path.
+	// Used to fetch reward pool's info.
+	RewardPoolFetchRP = "/rewardPoolFetch"
+)
+
+const (
 	// SessionPrefix represents prefix to save into storage.
 	SessionPrefix = "session"
 
@@ -58,9 +76,6 @@ const (
 	// ConsumerRegisteredRP represents MagmaSC relative path.
 	// Used to fetch consumer registered info.
 	ConsumerRegisteredRP = "/consumerExist"
-
-	// consumerType contents a value of consumer node type.
-	consumerType = "consumer"
 )
 
 const (
@@ -100,9 +115,6 @@ const (
 	// ProviderRegisteredRP represents MagmaSC relative path.
 	// Used to fetch provider registered info.
 	ProviderRegisteredRP = "/providerExist"
-
-	// providerType contents a value of provider node type.
-	providerType = "provider"
 )
 
 const (
@@ -126,9 +138,6 @@ const (
 	// Used for unstake tokens to MagmaSC.
 	AccessPointUnStakeFuncName = "access_point_unstake"
 
-	// accessPointType contents a value of type of Access Point's node
-	accessPointType = "access-point"
-
 	// AccessPointFetchRP represents MagmaSC relative path.
 	// Used to fetch access point info.
 	AccessPointFetchRP = "/accessPointFetch"
@@ -149,16 +158,16 @@ const (
 )
 
 const (
-	// one billion (Giga) is a unit prefix in metric systems
+	// A Billion (Giga) is a unit prefix in metric systems
 	// of units denoting a factor of one billion (1e9 or 1_000_000_000).
-	billion = 1e9
+	Billion = 1e9
 
-	// one million (Mega) is a unit prefix in metric systems
+	// A Million (Mega) is a unit prefix in metric systems
 	// of units denoting a factor of one million (1e6 or 1_000_000).
-	million = 1e6
+	Million = 1e6
 
-	// octet represents number of bits in an octet.
-	octet = 8
+	// Octet represents number of bits in an octet.
+	Octet = 8
 )
 
 const (

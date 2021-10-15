@@ -27,7 +27,7 @@ func NewAccessPoint() *AccessPoint {
 func (m *AccessPoint) Decode(blob []byte) error {
 	accessPoint := NewAccessPoint()
 	if err := json.Unmarshal(blob, accessPoint); err != nil {
-		return errDecodeData.Wrap(err)
+		return ErrDecodeData.Wrap(err)
 	}
 	if err := accessPoint.Validate(); err != nil {
 		return err
@@ -44,20 +44,15 @@ func (m *AccessPoint) Encode() []byte {
 	return blob
 }
 
-// GetType returns node type.
-func (m *AccessPoint) GetType() string {
-	return accessPointType
-}
-
 // Validate checks the AccessPoint for correctness.
 // If it is not return errInvalidAccessPoint.
 func (m *AccessPoint) Validate() (err error) {
 	if m.AccessPoint == nil {
-		return errors.New(errCodeBadRequest, "access point is not present yet")
+		return errors.New(ErrCodeBadRequest, "access point is not present yet")
 	}
 
 	if err = m.TermsValidate(); err != nil {
-		return errInvalidAccessPoint.Wrap(err)
+		return ErrInvalidAccessPoint.Wrap(err)
 	}
 
 	return nil
@@ -123,7 +118,7 @@ func (m *AccessPoint) TermsGetAmount() (amount int64) {
 // TermsGetMinCost returns calculated min cost value of access point's terms.
 func (m *AccessPoint) TermsGetMinCost() (cost int64) {
 	if m.Terms.MinCost > 0 {
-		cost = int64(m.Terms.MinCost * billion)
+		cost = int64(m.Terms.MinCost * Billion)
 	}
 
 	return cost
@@ -133,7 +128,7 @@ func (m *AccessPoint) TermsGetMinCost() (cost int64) {
 // NOTE: the price value will be represented in token units per megabyte.
 func (m *AccessPoint) TermsGetPrice() (price int64) {
 	if m.Terms.Price > 0 {
-		price = int64(m.Terms.Price * billion)
+		price = int64(m.Terms.Price * Billion)
 	}
 
 	return price
@@ -143,7 +138,7 @@ func (m *AccessPoint) TermsGetPrice() (price int64) {
 // If the Volume is empty it will be calculated by the access point's terms.
 func (m *AccessPoint) TermsGetVolume() int64 {
 	if m.Terms.Volume == 0 {
-		mbps := (m.Terms.Qos.UploadMbps + m.Terms.Qos.DownloadMbps) / octet // megabytes per second
+		mbps := (m.Terms.Qos.UploadMbps + m.Terms.Qos.DownloadMbps) / Octet // megabytes per second
 		duration := float32(m.Terms.ExpiredAt.Seconds - int64(time.Now()))  // duration in seconds
 		// rounded of bytes per second multiplied by duration in seconds
 		m.Terms.Volume = int64(mbps * duration)
@@ -182,24 +177,24 @@ func (m *AccessPoint) TermsIncrease() *AccessPoint {
 func (m *AccessPoint) TermsValidate() (err error) {
 	switch { // is invalid
 	case m.Terms == nil:
-		err = errors.New(errCodeBadRequest, "terms is not present yet")
+		err = errors.New(ErrCodeBadRequest, "terms is not present yet")
 
 	case m.Terms.Qos == nil:
-		err = errors.New(errCodeBadRequest, "invalid terms qos")
+		err = errors.New(ErrCodeBadRequest, "invalid terms qos")
 
 	case m.Terms.Qos.UploadMbps <= 0:
-		err = errors.New(errCodeBadRequest, "invalid terms qos upload mbps")
+		err = errors.New(ErrCodeBadRequest, "invalid terms qos upload mbps")
 
 	case m.Terms.Qos.DownloadMbps <= 0:
-		err = errors.New(errCodeBadRequest, "invalid terms qos download mbps")
+		err = errors.New(ErrCodeBadRequest, "invalid terms qos download mbps")
 
 	case m.TermsExpired():
 		now := time.NowTime().Add(TermsExpiredDuration).Format(time.RFC3339)
-		err = errors.New(errCodeBadRequest, "expired at must be after "+now)
+		err = errors.New(ErrCodeBadRequest, "expired at must be after "+now)
 
 	default:
 		return nil // is valid
 	}
 
-	return errInvalidTerms.Wrap(err)
+	return ErrInvalidTerms.Wrap(err)
 }

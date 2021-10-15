@@ -32,7 +32,7 @@ func NewProvider() *Provider {
 func (m *Provider) Decode(blob []byte) error {
 	var provider Provider
 	if err := json.Unmarshal(blob, &provider); err != nil {
-		return errDecodeData.Wrap(err)
+		return ErrDecodeData.Wrap(err)
 	}
 	if err := provider.Validate(); err != nil {
 		return err
@@ -54,29 +54,24 @@ func (m *Provider) ExternalID() string {
 	return m.ExtId
 }
 
-// GetType returns Provider's type.
-func (m *Provider) GetType() string {
-	return providerType
-}
-
 // Validate checks Provider for correctness.
 // If it is not return errInvalidProvider.
 func (m *Provider) Validate() (err error) {
 	switch { // is invalid
 	case m.Provider == nil:
-		err = errors.New(errCodeBadRequest, "provider is not present yet")
+		err = errors.New(ErrCodeBadRequest, "provider is not present yet")
 
 	case m.ExtId == "":
-		err = errors.New(errCodeBadRequest, "provider external id is required")
+		err = errors.New(ErrCodeBadRequest, "provider external id is required")
 
 	case m.Host == "":
-		err = errors.New(errCodeBadRequest, "provider host is required")
+		err = errors.New(ErrCodeBadRequest, "provider host is required")
 
 	default:
 		return nil // is valid
 	}
 
-	return errInvalidProvider.Wrap(err)
+	return ErrInvalidProvider.Wrap(err)
 }
 
 // ReadYAML reads config yaml file from path.

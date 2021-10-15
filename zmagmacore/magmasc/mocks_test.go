@@ -45,8 +45,8 @@ func mockConsumer() *Consumer {
 func mockDataUsage() *pb.DataUsage {
 	now := time.Now().Format(time.RFC3339Nano)
 	return &pb.DataUsage{
-		DownloadBytes: 3 * million,
-		UploadBytes:   2 * million,
+		DownloadBytes: 3 * Million,
+		UploadBytes:   2 * Million,
 		SessionId:     "id:session:" + now,
 		SessionTime:   1 * 60, // 1 minute
 	}

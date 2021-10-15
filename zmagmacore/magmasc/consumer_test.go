@@ -97,19 +97,6 @@ func Test_Consumer_Encode(t *testing.T) {
 	}
 }
 
-func Test_Consumer_GetType(t *testing.T) {
-	t.Parallel()
-
-	t.Run("OK", func(t *testing.T) {
-		t.Parallel()
-
-		cons := Consumer{}
-		if got := cons.GetType(); got != consumerType {
-			t.Errorf("GetType() got: %v | want: %v", got, consumerType)
-		}
-	})
-}
-
 func Test_Consumer_Validate(t *testing.T) {
 	t.Parallel()
 

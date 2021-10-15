@@ -21,7 +21,7 @@ func Test_AccessPoint_Decode(t *testing.T) {
 	}
 
 	accessPointInvalid := mockAccessPoint()
-	accessPointInvalid.Id = ""
+	accessPointInvalid.Terms = nil
 	blobInvalid, err := json.Marshal(accessPointInvalid)
 	if err != nil {
 		t.Fatalf("json.Marshal() error: %v | want: %v", err, nil)
@@ -46,7 +46,7 @@ func Test_AccessPoint_Decode(t *testing.T) {
 			error: true,
 		},
 		{
-			name:  "Ext_ID_Invalid_ERR",
+			name:  "Nil_Terms_Invalid_ERR",
 			blob:  blobInvalid,
 			want:  &AccessPoint{},
 			error: true,
@@ -102,19 +102,6 @@ func Test_AccessPoint_Encode(t *testing.T) {
 	}
 }
 
-func Test_AccessPoint_GetType(t *testing.T) {
-	t.Parallel()
-
-	t.Run("OK", func(t *testing.T) {
-		t.Parallel()
-
-		accessPoint := AccessPoint{}
-		if got := accessPoint.GetType(); got != accessPointType {
-			t.Errorf("GetType() got: %v | want: %v", got, accessPointType)
-		}
-	})
-}
-
 func Test_AccessPoint_Validate(t *testing.T) {
 	t.Parallel()
 
@@ -124,13 +111,7 @@ func Test_AccessPoint_Validate(t *testing.T) {
 	accessPointTermsNil := mockAccessPoint()
 	accessPointTermsNil.Terms = nil
 
-	accessPointEmptyID := mockAccessPoint()
-	accessPointEmptyID.Id = ""
-
-	accessPointEmptyProviderExtID := mockAccessPoint()
-	accessPointEmptyProviderExtID.ProviderExtId = ""
-
-	tests := [5]struct {
+	tests := [3]struct {
 		name        string
 		accessPoint *AccessPoint
 		error       bool
@@ -148,16 +129,6 @@ func Test_AccessPoint_Validate(t *testing.T) {
 		{
 			name:        "Terms_Is_Nil_ERR",
 			accessPoint: accessPointTermsNil,
-			error:       true,
-		},
-		{
-			name:        "Empty_ID_ERR",
-			accessPoint: accessPointEmptyID,
-			error:       true,
-		},
-		{
-			name:        "Empty_Provider_Ext_ID_ERR",
-			accessPoint: accessPointEmptyProviderExtID,
 			error:       true,
 		},
 	}
