@@ -89,16 +89,12 @@ func (r *Resty) DoGet(ctx context.Context, urls ...string) {
 			continue
 		}
 
-		go r.httpDo(req)
+		go r.httpDo(req.WithContext(r.ctx))
 	}
 
 }
 
 func (r *Resty) httpDo(req *http.Request) {
-
-	ctx, cancel := context.WithCancel(r.ctx)
-	defer cancel()
-
 	c := make(chan error, 1)
 	defer close(c)
 
@@ -125,19 +121,17 @@ func (r *Resty) httpDo(req *http.Request) {
 				}
 			}
 		} else {
-			resp, err = r.client.Do(req.WithContext(r.ctx))
+			resp, err = r.client.Do(req)
 		}
 
 		r.done <- Result{Request: req, Response: resp, Err: err}
 
 		c <- err
 
-	}(req.WithContext(ctx))
+	}(req)
 
 	select {
-	case <-ctx.Done():
-		r.transport.CancelRequest(req)
-		<-c
+	case <-r.ctx.Done():
 		return
 	case <-c:
 		return
@@ -147,14 +141,23 @@ func (r *Resty) httpDo(req *http.Request) {
 
 // Wait wait all of requests to done
 func (r *Resty) Wait() []error {
+
+	errs := make([]error, 0, r.qty)
+
 	defer func() {
-		// call cancelFunc, aovid to memory leak issue
+		if r := recover(); r != nil {
+			err, ok := r.(error)
+			if ok {
+				errs = append(errs, err)
+			}
+		}
+
+		// call cancelFunc, avoid to memory leak issue
 		if r.cancelFunc != nil {
 			r.cancelFunc()
 		}
 	}()
 
-	errs := make([]error, 0, r.qty)
 	done := 0
 
 	for {
