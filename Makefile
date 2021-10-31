@@ -10,7 +10,7 @@ include _util/printer.mk
 include _util/build_$(PLATFORM).mk
 include _util/build_mobile.mk
 
-.PHONY: build-tools install-all herumi-all gosdk-all sdkver help
+.PHONY: build-tools install-all herumi-all gosdk-all sdkver help lint
 
 default: help
 
@@ -26,19 +26,26 @@ clean-gosdk:
 gosdk-build: gomod-download
 	go build -x -v -tags bn256 ./...
 
-sdkver:
-	cd _sdkver; go build -o sdkver sdkver.go; ./sdkver
+wasm-build:
+	CGO_ENABLED=0 GOOS=js GOARCH=wasm go build -o sdk.wasm github.com/0chain/gosdk/wasmsdk
+     
+wasm-test:
+	env -i $(shell go env) PATH="$(shell go env GOROOT)/misc/wasm:$(PATH)" CGO_ENABLED=0 GOOS=js GOARCH=wasm go test -tags test -v github.com/0chain/gosdk/wasmsdk
 
 gosdk-mocks:
 	./generate_mocks.sh
 
-gosdk-test:
-	go test -tags bn256 ./...
+gosdk-test: wasm-test
+	go test -v -tags bn256 $(shell go list ./... | grep -v wasm)
 
+<<<<<<< HEAD
 gosdk-integration-test:
 	go test ./core/clients/blobberClient -args integration
 
 install-gosdk: | gosdk-build gosdk-test
+=======
+install-gosdk: | gosdk-build wasm-build
+>>>>>>> origin/jssdk-staging
 
 $(GOPATH)/bin/modvendor:
 	@go get -u github.com/goware/modvendor
@@ -58,8 +65,16 @@ getrev:
 
 install: install-gosdk sdkver
 
+test: gosdk-test
+
 clean: clean-gosdk clean-herumi
 	@rm -rf $(OUTDIR)
+
+lint-wasm:
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 golangci-lint run wasmsdk --disable-all -E errcheck
+
+lint: lint-wasm
+	golangci-lint run --skip-dirs wasmsdk
 
 help:
 	@echo "Environment: "
@@ -72,3 +87,16 @@ help:
 	@echo "\tmake build-tools       - Install go, jq and supporting tools required for build"
 	@echo "\tmake install           - Install gosdk"
 	@echo "\tmake clean             - Deletes all build output files"
+	@echo "\tmake lint              - Runs the golangci-lint
+
+install-herumi-ubuntu:
+	@cd /tmp && \
+        wget -O - https://github.com/herumi/mcl/archive/master.tar.gz | tar xz && \
+        wget -O - https://github.com/herumi/bls/archive/master.tar.gz | tar xz && \
+        mv mcl* mcl && \
+        mv bls* bls && \
+        make -C mcl -j $(nproc) lib/libmclbn256.so install && \
+        cp mcl/lib/libmclbn256.so /usr/local/lib && \
+        make MCL_DIR=../mcl -C bls -j $(nproc) install && \
+        rm -R /tmp/mcl && \
+        rm -R /tmp/bls

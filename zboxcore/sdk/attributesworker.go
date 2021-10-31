@@ -2,12 +2,15 @@ package sdk
 
 import (
 	"context"
+	"github.com/0chain/gosdk/constants"
 	"github.com/pkg/errors"
 	"math/bits"
 	"sync"
 
+
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/gosdk/core/clients/blobberClient"
+
 
 	"github.com/0chain/gosdk/zboxcore/fileref"
 
@@ -116,7 +119,7 @@ func (ar *AttributesRequest) ProcessAttributes() (err error) {
 		change.Attributes = ar.Attributes
 		change.NumBlocks = 0
 		change.Size = 0
-		change.Operation = allocationchange.UPDATE_ATTRS_OPERATION
+		change.Operation = constants.FileOperationUpdateAttrs
 		commitReq.changes = append(commitReq.changes, change)
 		commitReq.connectionID = ar.connectionID
 		commitReq.wg = &wg

@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"github.com/0chain/gosdk/constants"
 	"github.com/pkg/errors"
 	"math/bits"
 	"sync"
@@ -94,7 +95,7 @@ func (req *RenameRequest) ProcessRename() error {
 		newChange.NewName = req.newName
 		newChange.ObjectTree = objectTreeRefs[pos]
 		newChange.NumBlocks = 0
-		newChange.Operation = allocationchange.RENAME_OPERATION
+		newChange.Operation = constants.FileOperationRename
 		newChange.Size = 0
 		commitReq.changes = append(commitReq.changes, newChange)
 		commitReq.connectionID = req.connectionID

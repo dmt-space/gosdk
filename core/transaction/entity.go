@@ -14,6 +14,7 @@ import (
 
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/common"
+	"github.com/0chain/gosdk/core/conf"
 	"github.com/0chain/gosdk/core/encryption"
 	"github.com/0chain/gosdk/core/resty"
 	"github.com/0chain/gosdk/core/util"
@@ -22,6 +23,14 @@ import (
 const TXN_SUBMIT_URL = "v1/transaction/put"
 const TXN_VERIFY_URL = "v1/transaction/get/confirmation?hash="
 
+<<<<<<< HEAD
+=======
+const (
+	TxnSuccess = 1 // Indicates the transaction is successful in updating the state or smart contract
+	TxnFail    = 3 // Indicates a transaction has failed to update the state or smart contract
+)
+
+>>>>>>> origin/jssdk-staging
 //Transaction entity that encapsulates the transaction related data and meta data
 type Transaction struct {
 	Hash              string `json:"hash,omitempty"`
@@ -38,6 +47,7 @@ type Transaction struct {
 	TransactionOutput string `json:"transaction_output,omitempty"`
 	TransactionFee    int64  `json:"transaction_fee"`
 	OutputHash        string `json:"txn_output_hash"`
+	Status            int    `json:"transaction_status"`
 }
 
 //TxnReceipt - a transaction receipt is a processed transaction that contains the output
@@ -89,12 +99,12 @@ const (
 	ADD_FREE_ALLOCATION_ASSIGNER = "add_free_storage_assigner"
 
 	// Vesting SC
-	VESTING_TRIGGER       = "trigger"
-	VESTING_STOP          = "stop"
-	VESTING_UNLOCK        = "unlock"
-	VESTING_ADD           = "add"
-	VESTING_DELETE        = "delete"
-	VESTING_UPDATE_CONFIG = "update_config"
+	VESTING_TRIGGER         = "trigger"
+	VESTING_STOP            = "stop"
+	VESTING_UNLOCK          = "unlock"
+	VESTING_ADD             = "add"
+	VESTING_DELETE          = "delete"
+	VESTING_UPDATE_SETTINGS = "vestingsc-update-settings"
 
 	// Storage SC
 	STORAGESC_FINALIZE_ALLOCATION      = "finalize_allocation"
@@ -111,12 +121,24 @@ const (
 	STORAGESC_WRITE_POOL_LOCK          = "write_pool_lock"
 	STORAGESC_WRITE_POOL_UNLOCK        = "write_pool_unlock"
 	STORAGESC_ADD_CURATOR              = "add_curator"
+	STORAGESC_REMOVE_CURATOR           = "remove_curator"
 	STORAGESC_CURATOR_TRANSFER         = "curator_transfer_allocation"
+	STORAGESC_UPDATE_SETTINGS          = "update_settings"
 
-	// Miner SC
-	MINERSC_LOCK     = "addToDelegatePool"
-	MINERSC_UNLOCK   = "deleteFromDelegatePool"
-	MINERSC_SETTINGS = "update_settings"
+	MINERSC_LOCK             = "addToDelegatePool"
+	MINERSC_UNLOCK           = "deleteFromDelegatePool"
+	MINERSC_MINER_SETTINGS   = "update_miner_settings"
+	MINERSC_SHARDER_SETTINGS = "update_sharder_settings"
+	MINERSC_UPDATE_SETTINGS  = "update_settings"
+	MINERSC_UPDATE_GLOBALS   = "update_global_settings"
+	MINERSC_MINER_DELETE     = "delete_miner"
+	MINERSC_SHARDER_DELETE   = "delete_sharder"
+
+	// Faucet SC
+	FAUCETSC_UPDATE_SETTINGS = "update-settings"
+
+	// Interest pool SC
+	INTERESTPOOLSC_UPDATE_SETTINGS = "updateVariables"
 )
 
 type SignFunc = func(msg string) (string, error)
@@ -157,6 +179,14 @@ func (t *Transaction) ComputeHashData() {
 	hashdata := fmt.Sprintf("%v:%v:%v:%v:%v", t.CreationDate, t.ClientID,
 		t.ToClientID, t.Value, encryption.Hash(t.TransactionData))
 	t.Hash = encryption.Hash(hashdata)
+}
+
+func (t *Transaction) DebugJSON() []byte {
+	jsonByte, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		panic(err) // This JSONify function only supposed to be debug-only anyway.
+	}
+	return jsonByte
 }
 
 //GetHash - implement interface
@@ -212,8 +242,16 @@ func sendTransactionToURL(url string, txn *Transaction, wg *sync.WaitGroup) ([]b
 
 // VerifyTransaction query transaction status from sharders, and verify it by mininal confirmation
 func VerifyTransaction(txnHash string, sharders []string) (*Transaction, error) {
+<<<<<<< HEAD
 	if cfg == nil {
 		return nil, ErrConfigIsNotInitialized
+=======
+
+	cfg, err := conf.GetClientConfig()
+	if err != nil {
+
+		return nil, err
+>>>>>>> origin/jssdk-staging
 	}
 
 	numSharders := len(sharders)
@@ -269,6 +307,7 @@ func VerifyTransaction(txnHash string, sharders []string) (*Transaction, error) 
 		if err != nil { //network issue
 			msgList = append(msgList, err.Error())
 			return err
+<<<<<<< HEAD
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
@@ -282,6 +321,21 @@ func VerifyTransaction(txnHash string, sharders []string) (*Transaction, error) 
 			return errors.Throw(ErrInvalidRequest, strconv.Itoa(resp.StatusCode)+": "+resp.Status)
 		}
 
+=======
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil { //network issue
+			msgList = append(msgList, url+": "+err.Error())
+			return err
+		}
+
+		if resp.StatusCode != 200 {
+			msgList = append(msgList, url+": ["+strconv.Itoa(resp.StatusCode)+"] "+string(body))
+			return errors.Throw(ErrInvalidRequest, strconv.Itoa(resp.StatusCode)+": "+resp.Status)
+		}
+
+>>>>>>> origin/jssdk-staging
 		var objmap map[string]json.RawMessage
 		err = json.Unmarshal(body, &objmap)
 		if err != nil {
@@ -312,6 +366,7 @@ func VerifyTransaction(txnHash string, sharders []string) (*Transaction, error) 
 				msgList = append(msgList, fmt.Sprintf("Sharder does not have the block summary with url: %s, contents: %s", url, string(body)))
 			}
 
+<<<<<<< HEAD
 		}
 
 		return nil
@@ -336,6 +391,32 @@ func VerifyTransaction(txnHash string, sharders []string) (*Transaction, error) 
 			break
 		}
 
+=======
+		}
+
+		return nil
+	},
+		resty.WithTimeout(resty.DefaultRequestTimeout),
+		resty.WithRetry(resty.DefaultRetry),
+		resty.WithHeader(header))
+
+	for {
+		r.DoGet(context.TODO(), urls...)
+
+		r.Wait()
+
+		if numSuccess >= minNumConfirmation {
+			break
+		}
+
+		// pick more one sharder to query transaction
+		n, err := rand.Next()
+
+		if errors.Is(err, util.ErrNoItem) {
+			break
+		}
+
+>>>>>>> origin/jssdk-staging
 		urls = []string{fmt.Sprintf("%v/%v%v", sharders[n], TXN_VERIFY_URL, txnHash)}
 
 	}

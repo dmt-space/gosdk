@@ -11,6 +11,8 @@ import (
 	blobbergrpc "github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobbergrpc/proto"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/gosdk/core/clients/blobberClient"
+
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 
 	"github.com/0chain/gosdk/zboxcore/allocationchange"
@@ -106,7 +108,7 @@ func (req *CopyRequest) ProcessCopy() error {
 		newChange.DestPath = req.destPath
 		newChange.ObjectTree = objectTreeRefs[pos]
 		newChange.NumBlocks = 0
-		newChange.Operation = allocationchange.COPY_OPERATION
+		newChange.Operation = constants.FileOperationCopy
 		newChange.Size = 0
 		commitReq.changes = append(commitReq.changes, newChange)
 		commitReq.connectionID = req.connectionID

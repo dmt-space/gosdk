@@ -101,6 +101,7 @@ func (req *ListRequest) getListInfoFromBlobber(blobber *blockchain.StorageNode, 
 	if err != nil {
 		return
 	}
+
 }
 
 func (req *ListRequest) getlistFromBlobbers() []*listResponse {

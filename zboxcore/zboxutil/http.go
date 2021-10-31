@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/0chain/errors"
@@ -52,6 +53,7 @@ const (
 	FILE_META_ENDPOINT       = "/v1/file/meta/"
 	FILE_STATS_ENDPOINT      = "/v1/file/stats/"
 	OBJECT_TREE_ENDPOINT     = "/v1/file/objecttree/"
+	REFS_ENDPOINT            = "/v1/file/refs/"
 	COMMIT_META_TXN_ENDPOINT = "/v1/file/commitmetatxn/"
 	COLLABORATOR_ENDPOINT    = "/v1/file/collaborator/"
 	CALCULATE_HASH_ENDPOINT  = "/v1/file/calculatehash/"
@@ -121,12 +123,12 @@ var envProxy proxyFromEnv
 
 func init() {
 	Client = &http.Client{
-		Transport: transport,
+		Transport: DefaultTransport,
 	}
 	envProxy.initialize()
 }
 
-var transport = &http.Transport{
+var DefaultTransport = &http.Transport{
 	Proxy: envProxy.Proxy,
 	DialContext: (&net.Dialer{
 		Timeout:   45 * time.Second,
@@ -244,6 +246,34 @@ func NewObjectTreeRequest(baseUrl, allocation string, path string) (*http.Reques
 	return req, nil
 }
 
+func NewRefsRequest(baseUrl, allocationID, path, offsetPath, updatedDate, offsetDate, fileType, refType string, level, pageLimit int) (*http.Request, error) {
+	nUrl, err := url.Parse(baseUrl)
+	if err != nil {
+		return nil, err
+	}
+	nUrl.Path += REFS_ENDPOINT + allocationID
+	params := url.Values{}
+	params.Add("path", path)
+	params.Add("offsetPath", offsetPath)
+	params.Add("pageLimit", strconv.Itoa(pageLimit))
+	params.Add("updatedDate", updatedDate)
+	params.Add("offsetDate", offsetDate)
+	params.Add("type", fileType)
+	params.Add("refType", refType)
+	params.Add("level", strconv.Itoa(level))
+	nUrl.RawQuery = params.Encode()
+	req, err := http.NewRequest(http.MethodGet, nUrl.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := setClientInfoWithSign(req, allocationID); err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func NewAllocationRequest(baseUrl, allocation string) (*http.Request, error) {
 	nurl, err := url.Parse(baseUrl)
 	if err != nil {
@@ -353,6 +383,25 @@ func NewListRequest(baseUrl, allocation string, path string, auth_token string) 
 		return nil, err
 	}
 	setClientInfo(req)
+	return req, nil
+}
+
+// NewUploadRequestWithMethod create a http reqeust of upload
+func NewUploadRequestWithMethod(baseURL, allocation string, body io.Reader, method string) (*http.Request, error) {
+	url := fmt.Sprintf("%s%s%s", baseURL, UPLOAD_ENDPOINT, allocation)
+	var req *http.Request
+	var err error
+
+	req, err = http.NewRequest(method, url, body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err := setClientInfoWithSign(req, allocation); err != nil {
+		return nil, err
+	}
+
 	return req, nil
 }
 
@@ -501,7 +550,7 @@ func MakeSCRestAPICall(scAddress string, relativePath string, params map[string]
 			q.Add(k, v)
 		}
 		urlObj.RawQuery = q.Encode()
-		client := &http.Client{Transport: transport}
+		client := &http.Client{Transport: DefaultTransport}
 
 		response, err := client.Get(urlObj.String())
 		if err != nil {
@@ -553,7 +602,7 @@ func HttpDo(ctx context.Context, cncl context.CancelFunc, req *http.Request, f f
 	// defer cncl()
 	select {
 	case <-ctx.Done():
-		transport.CancelRequest(req)
+		DefaultTransport.CancelRequest(req)
 		<-c // Wait for f to return.
 		return ctx.Err()
 	case err := <-c:

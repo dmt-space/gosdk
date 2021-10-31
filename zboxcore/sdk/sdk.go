@@ -107,10 +107,22 @@ func GetNetwork() *Network {
 
 func SetMaxTxnQuery(num int) {
 	blockchain.SetMaxTxnQuery(num)
+
+	cfg, _ := conf.GetClientConfig()
+	if cfg != nil {
+		cfg.MaxTxnQuery = num
+	}
+
 }
 
 func SetQuerySleepTime(time int) {
 	blockchain.SetQuerySleepTime(time)
+
+	cfg, _ := conf.GetClientConfig()
+	if cfg != nil {
+		cfg.QuerySleepTime = time
+	}
+
 }
 
 func SetMinSubmit(num int) {
@@ -615,52 +627,11 @@ func GetMptData(key string) ([]byte, error) {
 // storage SC configurations and blobbers
 //
 
-type StorageStakePoolConfig struct {
-	MinLock          common.Balance `json:"min_lock"`
-	InterestRate     float64        `json:"interest_rate"`
-	InterestInterval time.Duration  `json:"interest_interval"`
+type InputMap struct {
+	Fields map[string]interface{} `json:"fields"`
 }
 
-// read pool configs
-
-type StorageReadPoolConfig struct {
-	MinLock       common.Balance `json:"min_lock"`
-	MinLockPeriod time.Duration  `json:"min_lock_period"`
-	MaxLockPeriod time.Duration  `json:"max_lock_period"`
-}
-
-// write pool configurations
-
-type StorageWritePoolConfig struct {
-	MinLock       common.Balance `json:"min_lock"`
-	MinLockPeriod time.Duration  `json:"min_lock_period"`
-	MaxLockPeriod time.Duration  `json:"max_lock_period"`
-}
-
-type StorageSCConfig struct {
-	MinAllocSize                    common.Size             `json:"min_alloc_size"`
-	MinAllocDuration                time.Duration           `json:"min_alloc_duration"`
-	MaxChallengeCompletionTime      time.Duration           `json:"max_challenge_completion_time"`
-	MinOfferDuration                time.Duration           `json:"min_offer_duration"`
-	MinBlobberCapacity              common.Size             `json:"min_blobber_capacity"`
-	ReadPool                        *StorageReadPoolConfig  `json:"readpool"`
-	WritePool                       *StorageWritePoolConfig `json:"writepool"`
-	StakePool                       *StorageStakePoolConfig `json:"stakepool"`
-	ValidatorReward                 float64                 `json:"validator_reward"`
-	BlobberSlash                    float64                 `json:"blobber_slash"`
-	MaxReadPrice                    common.Balance          `json:"max_read_price"`
-	MaxWritePrice                   common.Balance          `json:"max_write_price"`
-	FailedChallengesToCancel        int                     `json:"failed_challenges_to_cancel"`
-	FailedChallengesToRevokeMinLock int                     `json:"failed_challenges_to_revoke_min_lock"`
-	ChallengeEnabled                bool                    `json:"challenge_enabled"`
-	MaxChallengesPerGeneration      int                     `json:"max_challenges_per_generation"`
-	ChallengeGenerationRate         float64                 `json:"challenge_rate_per_mb_min"`
-	MaxDelegates                    int                     `json:"max_delegates"`
-	MaxCharge                       float64                 `json:"max_charge"`
-	TimeUnit                        time.Duration           `json:"time_unit"`
-}
-
-func GetStorageSCConfig() (conf *StorageSCConfig, err error) {
+func GetStorageSCConfig() (conf *InputMap, err error) {
 	if !sdkInitialized {
 		return nil, sdkNotInitialized
 	}
@@ -675,14 +646,12 @@ func GetStorageSCConfig() (conf *StorageSCConfig, err error) {
 		return nil, errors.New("", "empty response")
 	}
 
-	conf = new(StorageSCConfig)
+	conf = new(InputMap)
+	conf.Fields = make(map[string]interface{})
 	if err = json.Unmarshal(b, conf); err != nil {
 		return nil, errors.Wrap(err, "rror decoding response:")
 	}
 
-	if conf.ReadPool == nil || conf.WritePool == nil || conf.StakePool == nil {
-		return nil, errors.New("", "invalid confg: missing read/write/stake pool configs")
-	}
 	return
 }
 
@@ -758,7 +727,7 @@ func GetClientEncryptedPublicKey() (string, error) {
 		return "", sdkNotInitialized
 	}
 	encScheme := encryption.NewEncryptionScheme()
-	err := encScheme.Initialize(client.GetClient().Mnemonic)
+	_, err := encScheme.Initialize(client.GetClient().Mnemonic)
 	if err != nil {
 		return "", err
 	}
@@ -870,7 +839,7 @@ func CreateAllocationForOwner(owner, ownerpublickey string,
 		"read_price_range":              readPrice,
 		"write_price_range":             writePrice,
 		"max_challenge_completion_time": mcct,
-		"diversify_blobbers":            true,
+		"diversify_blobbers":            false,
 	}
 
 	var sn = transaction.SmartContractTxnData{
@@ -984,6 +953,23 @@ func CancelAllocation(allocID string) (hash string, err error) {
 	return
 }
 
+func RemoveCurator(curatorId, allocationId string) (string, error) {
+	if !sdkInitialized {
+		return "", sdkNotInitialized
+	}
+
+	var allocationRequest = map[string]interface{}{
+		"curator_id":    curatorId,
+		"allocation_id": allocationId,
+	}
+	var sn = transaction.SmartContractTxnData{
+		Name:      transaction.STORAGESC_REMOVE_CURATOR,
+		InputArgs: allocationRequest,
+	}
+	hash, _, err := smartContractTxn(sn)
+	return hash, err
+}
+
 func AddCurator(curatorId, allocationId string) (string, error) {
 	if !sdkInitialized {
 		return "", sdkNotInitialized
@@ -1071,6 +1057,7 @@ func smartContractTxnValueFee(sn transaction.SmartContractTxnData,
 		retries        = 0
 		t              *transaction.Transaction
 	)
+
 	time.Sleep(querySleepTime)
 
 	for retries < blockchain.GetMaxTxnQuery() {
@@ -1090,6 +1077,10 @@ func smartContractTxnValueFee(sn transaction.SmartContractTxnData,
 	if t == nil {
 		return "", "", errors.New("transaction_validation_failed",
 			"Failed to get the transaction confirmation")
+	}
+
+	if t.Status == transaction.TxnFail {
+		return t.Hash, t.TransactionOutput, errors.New("", t.TransactionOutput)
 	}
 
 	return t.Hash, t.TransactionOutput, nil
@@ -1175,7 +1166,7 @@ func GetAllocationMinLock(datashards, parityshards int, size, expiry int64,
 		"read_price_range":              readPrice,
 		"write_price_range":             writePrice,
 		"max_challenge_completion_time": mcct,
-		"diversify_blobbers":            true,
+		"diversify_blobbers":            false,
 	}
 	allocationData, _ := json.Marshal(allocationRequestData)
 
@@ -1192,4 +1183,13 @@ func GetAllocationMinLock(datashards, parityshards int, size, expiry int64,
 		return 0, errors.New("allocation_min_lock_decode_error", "Error decoding the response."+err.Error())
 	}
 	return response["min_lock_demand"], nil
+}
+
+func getHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return os.TempDir()
+	}
+
+	return home
 }
