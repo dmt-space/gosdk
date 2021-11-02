@@ -5,7 +5,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 
-	"github.com/0chain/gosdk/core/common/errors"
+	"github.com/0chain/errors"
 
 	"github.com/0chain/gosdk/core/common"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
@@ -41,7 +41,7 @@ func (req *ShareRequest) GetAuthTicketForEncryptedFile(clientID string, encPubli
 	if err != nil {
 		return "", err
 	}
-	at.ContentHash = fileRef.ContentHash
+	at.ActualFileHash = fileRef.ActualFileHash
 
 	if req.expirationSeconds == 0 {
 		// default expiration after 90 days
@@ -55,14 +55,15 @@ func (req *ShareRequest) GetAuthTicketForEncryptedFile(clientID string, encPubli
 	if err != nil {
 		return "", err
 	}
-	var encscheme encryption.EncryptionScheme
-	encscheme = encryption.NewEncryptionScheme()
-	encscheme.Initialize(client.GetClient().Mnemonic)
-	reKey, err := encscheme.GetReGenKey(encPublicKey, "filetype:audio")
-	if err != nil {
-		return "", err
+	if len(encPublicKey) > 0 {
+		encscheme := encryption.NewEncryptionScheme()
+		encscheme.Initialize(client.GetClient().Mnemonic)
+		reKey, err := encscheme.GetReGenKey(encPublicKey, "filetype:audio")
+		if err != nil {
+			return "", err
+		}
+		at.ReEncryptionKey = reKey
 	}
-	at.ReEncryptionKey = reKey
 	err = at.Sign()
 	if err != nil {
 		return "", err
@@ -107,7 +108,8 @@ func (req *ShareRequest) GetAuthTicket(clientID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	at.ContentHash = fileRef.ContentHash
+
+	at.ActualFileHash = fileRef.ActualFileHash
 
 	timestamp := int64(common.Now())
 	if req.expirationSeconds == 0 {

@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     steps:
     - name: Set up Go 1.x
@@ -45,7 +45,7 @@ jobs:
 
   make:
     name: Make File
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - build
@@ -96,17 +96,16 @@ jobs:
 
     - name: Create Release for Next Version
       id: create_release_next_version
-      uses: anothrNick/github-tag-action@1.34.0 
-      env:
-        WITH_V: true
-        DEFAULT_BUMP: ${{ github.event.inputs.version_tag }}
-        RELEASE_BRANCHES: master
-        TAG_CONTEXT: repo
-        VERBOSE: true
+      uses: zendesk/action-create-release@v1 
+      with:
+        draft: false
+        prerelease: false
+        auto_increment_type: ${{ github.event.inputs.version_tag }}
+        tag_schema: semantic
         
   zproxy:
     name: Triggering 0proxy Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -140,7 +139,7 @@ jobs:
         
   zbox:
     name: Triggering 0box Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -174,7 +173,7 @@ jobs:
         
   zdns:
     name: Triggering 0dns Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -208,7 +207,7 @@ jobs:
         
   zblock:
     name: Triggering 0block Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -242,7 +241,7 @@ jobs:
         
   zsearch:
     name: Triggering 0search Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -276,7 +275,7 @@ jobs:
         
   blobber:
     name: Triggering blobber Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -310,7 +309,7 @@ jobs:
   
 #   zboxcli:
 #     name: Triggering zboxcli Build
-#     runs-on: ubuntu-20.04
+#     runs-on: [self-hosted, build]
 
 #     needs: 
 #     - make
@@ -345,7 +344,7 @@ jobs:
 
 #   zboxmobile:
 #     name: Triggering zboxmobile Build
-#     runs-on: ubuntu-20.04
+#     runs-on: [self-hosted, build]
     
 #     needs: 
 #     - make
@@ -380,7 +379,7 @@ jobs:
 
 #   zwalletcli:
 #     name: Triggering zwalletcli Build
-#     runs-on: ubuntu-20.04
+#     runs-on: [self-hosted, build]
     
 #     needs: 
 #     - make

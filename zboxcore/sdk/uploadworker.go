@@ -16,7 +16,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/0chain/gosdk/core/common/errors"
+	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/zboxcore/allocationchange"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
@@ -38,34 +39,56 @@ func isSetTestEnv(name string) bool {
 const additionalSuccessRate = (10)
 
 type UploadFileMeta struct {
-	Name          string
-	Path          string
-	Hash          string
-	MimeType      string
-	Size          int64
+	// Name remote file name
+	Name string
+	// Path remote path
+	Path string
+	// Hash hash of entire source file
+	Hash     string
+	MimeType string
+	// Size total bytes of entire source file
+	Size int64
+
+	// ThumbnailSize total bytes of entire thumbnail
 	ThumbnailSize int64
+	// ThumbnailHash hash code of entire thumbnail
 	ThumbnailHash string
-	Attributes    fileref.Attributes
+
+	// Attributes file attributes in blockchain
+	Attributes fileref.Attributes
 }
 
 type uploadFormData struct {
-	ConnectionID        string             `json:"connection_id"`
-	Filename            string             `json:"filename"`
-	Path                string             `json:"filepath"`
-	Hash                string             `json:"content_hash,omitempty"`
-	ThumbnailHash       string             `json:"thumbnail_content_hash,omitempty"`
-	MerkleRoot          string             `json:"merkle_root,omitempty"`
-	ActualHash          string             `json:"actual_hash"`
-	ActualSize          int64              `json:"actual_size"`
-	ActualThumbnailSize int64              `json:"actual_thumb_size"`
-	ActualThumbnailHash string             `json:"actual_thumb_hash"`
-	MimeType            string             `json:"mimetype"`
-	CustomMeta          string             `json:"custom_meta,omitempty"`
-	EncryptedKey        string             `json:"encrypted_key,omitempty"`
-	Attributes          fileref.Attributes `json:"attributes,omitempty"`
+	ConnectionID string `json:"connection_id"`
+	// Filename remote file name
+	Filename string `json:"filename"`
+	// Path remote path
+	Path string `json:"filepath"`
+
+	// Hash hash of shard data (encoded, encrypted)
+	Hash string `json:"content_hash,omitempty"`
+	// Hash hash of shard thumbnail (encoded, encrypted)
+	ThumbnailHash string `json:"thumbnail_content_hash,omitempty"`
+
+	// MerkleRoot merkle's root hash of shard data (encoded, encrypted)
+	MerkleRoot string `json:"merkle_root,omitempty"`
+
+	// ActualHash hash of orignial file (unencoded, unencrypted)
+	ActualHash string `json:"actual_hash"`
+	// ActualSize total bytes of orignial file (unencoded, unencrypted)
+	ActualSize int64 `json:"actual_size"`
+	// ActualThumbnailSize total bytes of orignial thumbnail (unencoded, unencrypted)
+	ActualThumbnailSize int64 `json:"actual_thumb_size"`
+	// ActualThumbnailHash hash of orignial thumbnail (unencoded, unencrypted)
+	ActualThumbnailHash string `json:"actual_thumb_hash"`
+
+	MimeType     string             `json:"mimetype"`
+	CustomMeta   string             `json:"custom_meta,omitempty"`
+	EncryptedKey string             `json:"encrypted_key,omitempty"`
+	Attributes   fileref.Attributes `json:"attributes,omitempty"`
 }
 
-type uploadResult struct {
+type UploadResult struct {
 	Filename   string `json:"filename"`
 	ShardSize  int64  `json:"size"`
 	Hash       string `json:"content_hash,omitempty"`
@@ -221,6 +244,7 @@ func (req *UploadRequest) prepareUpload(
 			}
 			// Setup file hash compute
 			h := sha1.New()
+
 			hWr := io.MultiWriter(h)
 			// Read the data
 			for remaining > 0 {
@@ -288,10 +312,10 @@ func (req *UploadRequest) prepareUpload(
 		}
 		if resp.StatusCode != http.StatusOK {
 			Logger.Error(blobber.Baseurl, " Upload error response: ", resp.StatusCode, string(respbody))
-			req.err = errors.New(string(respbody))
+			req.err = errors.New("", string(respbody))
 			return err
 		}
-		var r uploadResult
+		var r UploadResult
 		err = json.Unmarshal(respbody, &r)
 		if err != nil {
 			Logger.Error(blobber.Baseurl, " Upload response parse error: ", err)
@@ -300,7 +324,7 @@ func (req *UploadRequest) prepareUpload(
 		}
 		if r.Filename != formData.Filename || r.ShardSize != shardSize ||
 			r.Hash != formData.Hash || r.MerkleRoot != formData.MerkleRoot {
-			err = errors.New(fmt.Sprintf(blobber.Baseurl, "Unexpected upload response data", string(respbody)))
+			err = fmt.Errorf(blobber.Baseurl, "Unexpected upload response data", string(respbody))
 			Logger.Error(err)
 			req.err = err
 			return err
@@ -351,7 +375,7 @@ func (req *UploadRequest) setupUpload(a *Allocation) error {
 	if req.isEncrypted {
 		req.encscheme = encryption.NewEncryptionScheme()
 		mnemonic := client.GetClient().Mnemonic
-		err := req.encscheme.Initialize(mnemonic)
+		_, err := req.encscheme.Initialize(mnemonic)
 		if err != nil {
 			return err
 		}
@@ -428,7 +452,7 @@ func (req *UploadRequest) completePush() error {
 	}
 	req.wg.Wait()
 	if !req.isConsensusOk() {
-		return errors.New(fmt.Sprintf("Upload failed: Consensus_rate:%f, expected:%f", req.getConsensusRate(), req.getConsensusRequiredForOk()))
+		return fmt.Errorf("Upload failed: Consensus_rate:%f, expected:%f", req.getConsensusRate(), req.getConsensusRequiredForOk())
 	}
 	return nil
 }
@@ -541,7 +565,7 @@ func (req *UploadRequest) processUpload(ctx context.Context, a *Allocation) {
 			newChange := &allocationchange.UpdateFileChange{}
 			newChange.NewFile = req.file[c]
 			newChange.NumBlocks = req.file[c].NumBlocks
-			newChange.Operation = allocationchange.UPDATE_OPERATION
+			newChange.Operation = constants.FileOperationUpdate
 			newChange.Size = req.file[c].Size
 			newChange.NewFile.Attributes = req.file[c].Attributes
 			commitReq.changes = append(commitReq.changes, newChange)
@@ -549,7 +573,7 @@ func (req *UploadRequest) processUpload(ctx context.Context, a *Allocation) {
 			newChange := &allocationchange.NewFileChange{}
 			newChange.File = req.file[c]
 			newChange.NumBlocks = req.file[c].NumBlocks
-			newChange.Operation = allocationchange.INSERT_OPERATION
+			newChange.Operation = constants.FileOperationInsert
 			newChange.Size = req.file[c].Size
 			newChange.File.Attributes = req.file[c].Attributes
 			commitReq.changes = append(commitReq.changes, newChange)

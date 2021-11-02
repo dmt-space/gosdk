@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -13,8 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/common"
-	"github.com/0chain/gosdk/core/common/errors"
+	"github.com/0chain/gosdk/core/conf"
 	"github.com/0chain/gosdk/core/logger"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/0chain/gosdk/core/version"
@@ -59,13 +61,23 @@ const (
 	GET_VESTING_POOL_INFO    = VESTINGSC_PFX + `/getPoolInfo`
 	GET_VESTING_CLIENT_POOLS = VESTINGSC_PFX + `/getClientPools`
 
+	// inerest pool SC
+
+	INTERESTPOOLSC_PFX        = `/v1/screst/` + InterestPoolSmartContractAddress
+	GET_INTERESTPOOLSC_CONFIG = INTERESTPOOLSC_PFX + `/getConfig`
+
+	// faucet sc
+
+	FAUCETSC_PFX        = `/v1/screst/` + FaucetSmartContractAddress
+	GET_FAUCETSC_CONFIG = FAUCETSC_PFX + `/getConfig`
+
 	// miner SC
 
-	MINERSC_PFX = `/v1/screst/` + MinerSmartContractAddress
-
+	MINERSC_PFX          = `/v1/screst/` + MinerSmartContractAddress
 	GET_MINERSC_NODE     = MINERSC_PFX + "/nodeStat"
 	GET_MINERSC_POOL     = MINERSC_PFX + "/nodePoolStat"
 	GET_MINERSC_CONFIG   = MINERSC_PFX + "/configs"
+	GET_MINERSC_GLOBALS  = MINERSC_PFX + "/globalSettings"
 	GET_MINERSC_USER     = MINERSC_PFX + "/getUserPools"
 	GET_MINERSC_MINERS   = MINERSC_PFX + "/getMinerList"
 	GET_MINERSC_SHARDERS = MINERSC_PFX + "/getSharderList"
@@ -200,14 +212,14 @@ func init() {
 }
 func checkSdkInit() error {
 	if !_config.isConfigured || len(_config.chain.Miners) < 1 || len(_config.chain.Sharders) < 1 {
-		return errors.New("SDK not initialized")
+		return errors.New("", "SDK not initialized")
 	}
 	return nil
 }
 func checkWalletConfig() error {
 	if !_config.isValidWallet || _config.wallet.ClientID == "" {
 		Logger.Error("wallet info not found. returning error.")
-		return errors.New("wallet info not found. set wallet info")
+		return errors.New("", "wallet info not found. set wallet info")
 	}
 	return nil
 }
@@ -289,15 +301,26 @@ func CloseLog() {
 
 // Init inializes the SDK with miner, sharder and signature scheme provided in
 // configuration provided in JSON format
-func Init(c string) error {
-	err := json.Unmarshal([]byte(c), &_config.chain)
+// It is used for 0proxy, 0box, 0explorer, andorid, ios : walletJSON is ChainConfig
+//	 {
+//      "chain_id":"0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe",
+//		"signature_scheme" : "bls0chain",
+//		"block_worker" : "http://localhost/dns",
+// 		"min_submit" : 50,
+//		"min_confirmation" : 50,
+//		"confirmation_chain_length" : 3,
+//		"num_keys" : 1,
+//		"eth_node" : "https://ropsten.infura.io/v3/xxxxxxxxxxxxxxx"
+//	 }
+func Init(chainConfigJSON string) error {
+	err := json.Unmarshal([]byte(chainConfigJSON), &_config.chain)
 	if err == nil {
 		// Check signature scheme is supported
 		if _config.chain.SignatureScheme != "ed25519" && _config.chain.SignatureScheme != "bls0chain" {
-			return errors.New("invalid/unsupported signature scheme")
+			return errors.New("", "invalid/unsupported signature scheme")
 		}
 
-		err := UpdateNetworkDetails()
+		err = UpdateNetworkDetails()
 		if err != nil {
 			return err
 		}
@@ -306,6 +329,17 @@ func Init(c string) error {
 
 		assertConfig()
 		_config.isConfigured = true
+
+		cfg := &conf.Config{
+			BlockWorker:             _config.chain.BlockWorker,
+			MinSubmit:               _config.chain.MinSubmit,
+			MinConfirmation:         _config.chain.MinConfirmation,
+			ConfirmationChainLength: _config.chain.ConfirmationChainLength,
+			SignatureScheme:         _config.chain.SignatureScheme,
+			ChainID:                 _config.chain.ChainID,
+		}
+
+		conf.InitClientConfig(cfg)
 	}
 	Logger.Info("*******  Wallet SDK Version:", version.VERSIONSTR, " *******")
 	return err
@@ -341,14 +375,16 @@ func WithConfirmationChainLength(m int) func(c *ChainConfig) error {
 
 // InitZCNSDK initializes the SDK with miner, sharder and signature scheme provided.
 func InitZCNSDK(blockWorker string, signscheme string, configs ...func(*ChainConfig) error) error {
+
 	if signscheme != "ed25519" && signscheme != "bls0chain" {
-		return errors.New("invalid/unsupported signature scheme")
+		return errors.New("", "invalid/unsupported signature scheme")
 	}
 	_config.chain.BlockWorker = blockWorker
 	_config.chain.SignatureScheme = signscheme
 
 	err := UpdateNetworkDetails()
 	if err != nil {
+		log.Println("UpdateNetworkDetails:", err)
 		return err
 	}
 
@@ -363,6 +399,18 @@ func InitZCNSDK(blockWorker string, signscheme string, configs ...func(*ChainCon
 	assertConfig()
 	_config.isConfigured = true
 	Logger.Info("*******  Wallet SDK Version:", version.VERSIONSTR, " *******")
+
+	cfg := &conf.Config{
+		BlockWorker:             _config.chain.BlockWorker,
+		MinSubmit:               _config.chain.MinSubmit,
+		MinConfirmation:         _config.chain.MinConfirmation,
+		ConfirmationChainLength: _config.chain.ConfirmationChainLength,
+		SignatureScheme:         _config.chain.SignatureScheme,
+		ChainID:                 _config.chain.ChainID,
+	}
+
+	conf.InitClientConfig(cfg)
+
 	return nil
 }
 
@@ -376,6 +424,11 @@ func GetNetwork() *Network {
 func SetNetwork(miners []string, sharders []string) {
 	_config.chain.Miners = miners
 	_config.chain.Sharders = sharders
+
+	conf.InitChainNetwork(&conf.Network{
+		Miners:   miners,
+		Sharders: sharders,
+	})
 }
 
 func GetNetworkJSON() string {
@@ -388,7 +441,7 @@ func GetNetworkJSON() string {
 // It also registers the wallet again to block chain.
 func CreateWallet(statusCb WalletCallback) error {
 	if len(_config.chain.Miners) < 1 || len(_config.chain.Sharders) < 1 {
-		return errors.New("SDK not initialized")
+		return errors.New("", "SDK not initialized")
 	}
 	go func() {
 		sigScheme := zcncrypto.NewSignatureScheme(_config.chain.SignatureScheme)
@@ -410,7 +463,7 @@ func CreateWallet(statusCb WalletCallback) error {
 // It also registers the wallet again to block chain.
 func RecoverWallet(mnemonic string, statusCb WalletCallback) error {
 	if zcncrypto.IsMnemonicValid(mnemonic) != true {
-		return errors.New("Invalid mnemonic")
+		return errors.New("", "Invalid mnemonic")
 	}
 	go func() {
 		sigScheme := zcncrypto.NewSignatureScheme(_config.chain.SignatureScheme)
@@ -431,7 +484,7 @@ func RecoverWallet(mnemonic string, statusCb WalletCallback) error {
 // Split keys from the primary master key
 func SplitKeys(privateKey string, numSplits int) (string, error) {
 	if _config.chain.SignatureScheme != "bls0chain" {
-		return "", errors.New("signature key doesn't support split key")
+		return "", errors.New("", "signature key doesn't support split key")
 	}
 	sigScheme := zcncrypto.NewBLS0ChainScheme()
 	err := sigScheme.SetPrivateKey(privateKey)
@@ -489,7 +542,7 @@ func RegisterToMiners(wallet *zcncrypto.Wallet, statusCb WalletCallback) error {
 	}
 	rate := consensus * 100 / float32(len(_config.chain.Miners))
 	if rate < consensusThresh {
-		return errors.New(fmt.Sprintf("Register consensus not met. Consensus: %f, Expected: %f", rate, consensusThresh))
+		return fmt.Errorf("Register consensus not met. Consensus: %f, Expected: %f", rate, consensusThresh)
 	}
 	w, err := wallet.Marshal()
 	if err != nil {
@@ -551,10 +604,10 @@ func SetWalletInfo(w string, splitKeyWallet bool) error {
 // SetAuthUrl will be called by app to set zauth URL to SDK.
 func SetAuthUrl(url string) error {
 	if !_config.isSplitWallet {
-		return errors.New("wallet type is not split key")
+		return errors.New("", "wallet type is not split key")
 	}
 	if url == "" {
-		return errors.New("invalid auth url")
+		return errors.New("", "invalid auth url")
 	}
 	_config.authUrl = strings.TrimRight(url, "/")
 	return nil
@@ -641,7 +694,7 @@ func getBalanceFromSharders(clientID string) (int64, string, error) {
 	}
 	rate := consensus * 100 / float32(len(_config.chain.Sharders))
 	if rate < consensusThresh {
-		return 0, winError, errors.New("get balance failed. consensus not reached")
+		return 0, winError, errors.New("", "get balance failed. consensus not reached")
 	}
 	return winBalance, winInfo, nil
 }
@@ -676,7 +729,7 @@ func getTokenUSDRate() (float64, error) {
 	return getTokenRateByCurrency("usd")
 }
 
-func getTokenRateByCurrency(currency string) (float64, error){
+func getTokenRateByCurrency(currency string) (float64, error) {
 	var CoinGeckoResponse struct {
 		ID         string `json:"id"`
 		Symbol     string `json:"symbol"`
@@ -934,11 +987,35 @@ type VestingSCConfig struct {
 	MaxDescriptionLength int            `json:"max_description_length"`
 }
 
+type InputMap struct {
+	Fields map[string]string `json:"fields"`
+}
+
 func GetVestingSCConfig(cb GetInfoCallback) (err error) {
 	if err = checkConfig(); err != nil {
 		return
 	}
 	go getInfoFromSharders(GET_VESTING_CONFIG, 0, cb)
+	return
+}
+
+// interest pools sc
+
+func GetInterestPoolSCConfig(cb GetInfoCallback) (err error) {
+	if err = checkConfig(); err != nil {
+		return
+	}
+	go getInfoFromSharders(GET_INTERESTPOOLSC_CONFIG, 0, cb)
+	return
+}
+
+// faucet
+
+func GetFaucetSCConfig(cb GetInfoCallback) (err error) {
+	if err = checkConfig(); err != nil {
+		return
+	}
+	go getInfoFromSharders(GET_FAUCETSC_CONFIG, 0, cb)
 	return
 }
 
@@ -1043,35 +1120,19 @@ func GetMinerSCUserInfo(clientID string, cb GetInfoCallback) (err error) {
 	return
 }
 
-type MinerSCConfig struct {
-	ViewChange          int64          `json:"view_change"`
-	MaxN                int            `json:"max_n"`
-	MinN                int            `json:"min_n"`
-	MinS                int            `json:"min_s"`
-	MaxS                int            `json:"max_s"`
-	TPercent            float64        `json:"t_percent"`
-	KPercent            float64        `json:"k_percent"`
-	LastRound           int64          `json:"last_round"`
-	MaxStake            common.Balance `json:"max_stake"`
-	MinStake            common.Balance `json:"min_stake"`
-	InterestRate        float64        `json:"interest_rate"`
-	RewardRate          float64        `json:"reward_rate"`
-	ShareRatio          float64        `json:"share_ratio"`
-	BlockReward         common.Balance `json:"block_reward"`
-	MaxCharge           float64        `json:"max_charge"`
-	Epoch               int64          `json:"epoch"`
-	RewardDeclineRate   float64        `json:"reward_decline_rate"`
-	InterestDeclineRate float64        `json:"interest_decline_rate"`
-	MaxMint             common.Balance `json:"max_mint"`
-	Minted              common.Balance `json:"minted"`
-	MaxDelegates        int            `json:"max_delegates"`
-}
-
 func GetMinerSCConfig(cb GetInfoCallback) (err error) {
 	if err = checkConfig(); err != nil {
 		return
 	}
 	go getInfoFromSharders(GET_MINERSC_CONFIG, 0, cb)
+	return
+}
+
+func GetMinerSCGlobals(cb GetInfoCallback) (err error) {
+	if err = checkConfig(); err != nil {
+		return
+	}
+	go getInfoFromSharders(GET_MINERSC_GLOBALS, 0, cb)
 	return
 }
 
@@ -1084,8 +1145,7 @@ func GetStorageSCConfig(cb GetInfoCallback) (err error) {
 	if err = checkConfig(); err != nil {
 		return
 	}
-	var url = STORAGESC_GET_SC_CONFIG
-	go getInfoFromSharders(url, OpStorageSCGetConfig, cb)
+	go getInfoFromSharders(STORAGESC_GET_SC_CONFIG, OpStorageSCGetConfig, cb)
 	return
 }
 

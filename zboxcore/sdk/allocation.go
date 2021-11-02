@@ -17,20 +17,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0chain/gosdk/zboxcore/client"
-	"github.com/0chain/gosdk/zboxcore/fileref"
-
+	"github.com/0chain/errors"
+	thrown "github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/common"
-	"github.com/0chain/gosdk/core/common/errors"
 	"github.com/0chain/gosdk/core/transaction"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
+	"github.com/0chain/gosdk/zboxcore/client"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 	. "github.com/0chain/gosdk/zboxcore/logger"
 	"github.com/0chain/gosdk/zboxcore/marker"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
 )
 
 var (
-	noBLOBBERS     = errors.New("No Blobbers set in this allocation")
+	noBLOBBERS     = errors.New("", "No Blobbers set in this allocation")
 	notInitialized = errors.New("sdk_not_initialized", "Please call InitStorageSDK Init and use GetAllocation to get the allocation object")
 )
 
@@ -222,7 +222,7 @@ func (a *Allocation) startWorker(ctx context.Context) {
 }
 
 func (a *Allocation) dispatchWork(ctx context.Context) {
-	for true {
+	for {
 		select {
 		case <-ctx.Done():
 			Logger.Info("Upload cancelled by the parent")
@@ -243,18 +243,18 @@ func (a *Allocation) dispatchWork(ctx context.Context) {
 	}
 }
 
+// UpdateFile [Deprecated]please use CreateChunkedUpload
 func (a *Allocation) UpdateFile(localpath string, remotepath string,
 	attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, true, "", false,
-		false, attrs)
+	return a.StartChunkedUpload(getHomeDir(), localpath, remotepath, status, true, "", false, attrs)
 }
 
+// UploadFile [Deprecated]please use CreateChunkedUpload
 func (a *Allocation) UploadFile(localpath string, remotepath string,
 	attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, false, "", false,
-		false, attrs)
+	return a.StartChunkedUpload(getHomeDir(), localpath, remotepath, status, false, "", false, attrs)
 }
 
 func (a *Allocation) CreateDir(dirName string) error {
@@ -285,43 +285,48 @@ func (a *Allocation) RepairFile(localpath string, remotepath string,
 		false, true, fileref.Attributes{})
 }
 
+// UpdateFileWithThumbnail [Deprecated]please use CreateChunkedUpload
 func (a *Allocation) UpdateFileWithThumbnail(localpath string, remotepath string,
 	thumbnailpath string, attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, true,
-		thumbnailpath, false, false, attrs)
+	return a.StartChunkedUpload(getHomeDir(), localpath, remotepath, status, true,
+		thumbnailpath, false, attrs)
 }
 
-func (a *Allocation) UploadFileWithThumbnail(localpath string,
+// UploadFileWithThumbnail [Deprecated]please use CreateChunkedUpload
+func (a *Allocation) UploadFileWithThumbnail(tmpPath string, localpath string,
 	remotepath string, thumbnailpath string, attrs fileref.Attributes,
 	status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, false,
-		thumbnailpath, false, false, attrs)
+	return a.StartChunkedUpload(tmpPath, localpath, remotepath, status, false,
+		thumbnailpath, false, attrs)
 }
 
-func (a *Allocation) EncryptAndUpdateFile(localpath string, remotepath string,
+// EncryptAndUpdateFile [Deprecated]please use CreateChunkedUpload
+func (a *Allocation) EncryptAndUpdateFile(tmpPath string, localpath string, remotepath string,
 	attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, true, "", true,
-		false, attrs)
+	return a.StartChunkedUpload(tmpPath, localpath, remotepath, status, true, "", true, attrs)
 }
 
-func (a *Allocation) EncryptAndUploadFile(localpath string, remotepath string,
+// EncryptAndUploadFile [Deprecated]please use CreateChunkedUpload
+func (a *Allocation) EncryptAndUploadFile(tmpPath string, localpath string, remotepath string,
 	attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, false, "", true,
-		false, attrs)
+	return a.StartChunkedUpload(tmpPath, localpath, remotepath, status, false, "", true, attrs)
 }
 
-func (a *Allocation) EncryptAndUpdateFileWithThumbnail(localpath string,
+// EncryptAndUpdateFileWithThumbnail [Deprecated]please use CreateChunkedUpload
+func (a *Allocation) EncryptAndUpdateFileWithThumbnail(tmpPath string, localpath string,
 	remotepath string, thumbnailpath string, attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.uploadOrUpdateFile(localpath, remotepath, status, true,
-		thumbnailpath, true, false, attrs)
+	return a.StartChunkedUpload(tmpPath, localpath, remotepath, status, true,
+		thumbnailpath, true, attrs)
 }
 
+// EncryptAndUploadFileWithThumbnail [Deprecated]please use CreateChunkedUpload
 func (a *Allocation) EncryptAndUploadFileWithThumbnail(
+	tmpPath string,
 	localpath string,
 	remotepath string,
 	thumbnailpath string,
@@ -329,18 +334,78 @@ func (a *Allocation) EncryptAndUploadFileWithThumbnail(
 	status StatusCallback,
 ) error {
 
-	return a.uploadOrUpdateFile(
+	return a.StartChunkedUpload(tmpPath,
 		localpath,
 		remotepath,
 		status,
 		false,
 		thumbnailpath,
 		true,
-		false,
 		attrs,
 	)
 }
 
+func (a *Allocation) StartChunkedUpload(workdir, localPath string,
+	remotePath string,
+	status StatusCallback,
+	isUpdate bool,
+	thumbnailPath string,
+	encryption bool,
+	attrs fileref.Attributes,
+) error {
+
+	if !a.isInitialized() {
+		return notInitialized
+	}
+
+	fileReader, err := os.Open(localPath)
+	if err != nil {
+		return err
+	}
+	defer fileReader.Close()
+
+	fileInfo, err := fileReader.Stat()
+	if err != nil {
+		return err
+	}
+
+	mimeType, err := zboxutil.GetFileContentType(fileReader)
+	if err != nil {
+		return err
+	}
+
+	remotePath = zboxutil.RemoteClean(remotePath)
+	isabs := zboxutil.IsRemoteAbs(remotePath)
+	if !isabs {
+		err = thrown.New("invalid_path", "Path should be valid and absolute")
+		return err
+	}
+	remotePath = zboxutil.GetFullRemotePath(localPath, remotePath)
+
+	_, fileName := filepath.Split(remotePath)
+
+	fileMeta := FileMeta{
+		Path:       localPath,
+		ActualSize: fileInfo.Size(),
+		MimeType:   mimeType,
+		RemoteName: fileName,
+		RemotePath: remotePath,
+		Attributes: attrs,
+	}
+
+	ChunkedUpload, err := CreateChunkedUpload(workdir, a, fileMeta, fileReader, isUpdate,
+		WithThumbnailFile(thumbnailPath),
+		WithChunkSize(DefaultChunkSize),
+		WithEncrypt(encryption),
+		WithStatusCallback(status))
+	if err != nil {
+		return err
+	}
+
+	return ChunkedUpload.Start()
+}
+
+// uploadOrUpdateFile [Deprecated]please use CreateChunkedUpload
 func (a *Allocation) uploadOrUpdateFile(localpath string,
 	remotepath string,
 	status StatusCallback,
@@ -415,7 +480,7 @@ func (a *Allocation) uploadOrUpdateFile(localpath string,
 		}
 
 		if !repairRequired {
-			return errors.New("Repair not required")
+			return errors.New("", "Repair not required")
 		}
 
 		file, _ := ioutil.ReadFile(localpath)
@@ -423,7 +488,7 @@ func (a *Allocation) uploadOrUpdateFile(localpath string,
 		hash.Write(file)
 		contentHash := hex.EncodeToString(hash.Sum(nil))
 		if contentHash != fileRef.ActualFileHash {
-			return errors.New("Content hash doesn't match")
+			return errors.New("", "Content hash doesn't match")
 		}
 
 		uploadReq.filemeta.Hash = fileRef.ActualFileHash
@@ -432,7 +497,7 @@ func (a *Allocation) uploadOrUpdateFile(localpath string,
 	}
 
 	if !uploadReq.IsFullConsensusSupported() {
-		return errors.New(fmt.Sprintf("allocation requires [%v] blobbers, which is greater than the maximum permitted number of [%v]. reduce number of data or parity shards and try again", uploadReq.fullconsensus, uploadReq.GetMaxBlobbersSupported()))
+		return fmt.Errorf("allocation requires [%v] blobbers, which is greater than the maximum permitted number of [%v]. reduce number of data or parity shards and try again", uploadReq.fullconsensus, uploadReq.GetMaxBlobbersSupported())
 	}
 
 	go func() {
@@ -459,7 +524,7 @@ func (a *Allocation) RepairRequired(remotepath string) (zboxutil.Uint128, bool, 
 	listReq.remotefilepath = remotepath
 	found, fileRef, _ := listReq.getFileConsensusFromBlobbers()
 	if fileRef == nil {
-		return found, false, fileRef, errors.New("File not found for the given remotepath")
+		return found, false, fileRef, errors.New("", "File not found for the given remotepath")
 	}
 
 	uploadMask := zboxutil.NewUint128(1).Lsh(uint64(len(a.Blobbers))).Sub64(1)
@@ -487,13 +552,13 @@ func (a *Allocation) downloadFile(localPath string, remotePath string, contentMo
 	}
 	if stat, err := os.Stat(localPath); err == nil {
 		if !stat.IsDir() {
-			return errors.New(fmt.Sprintf("Local path is not a directory '%s'", localPath))
+			return fmt.Errorf("Local path is not a directory '%s'", localPath)
 		}
 		localPath = strings.TrimRight(localPath, "/")
 		_, rFile := filepath.Split(remotePath)
 		localPath = fmt.Sprintf("%s/%s", localPath, rFile)
 		if _, err := os.Stat(localPath); err == nil {
-			return errors.New(fmt.Sprintf("Local file already exists '%s'", localPath))
+			return fmt.Errorf("Local file already exists '%s'", localPath)
 		}
 	}
 	lPath, _ := filepath.Split(localPath)
@@ -598,6 +663,36 @@ func (a *Allocation) listDir(path string, consensusThresh, fullconsensus float32
 		return ref, nil
 	}
 	return nil, errors.New("list_request_failed", "Failed to get list response from the blobbers")
+}
+
+//This function will retrieve paginated objectTree and will handle concensus; Required tree should be made in application side.
+//TODO use allocation context
+func (a *Allocation) GetRefs(path, offsetPath, updatedDate, offsetDate, fileType, refType string, level, pageLimit int) (*ObjectTreeResult, error) {
+	if len(path) == 0 || !zboxutil.IsRemoteAbs(path) {
+		return nil, errors.New("invalid_path", "Invalid path for the objectTree. Absolute path required")
+	}
+	if !a.isInitialized() {
+		return nil, notInitialized
+	}
+	oTreeReq := &ObjectTreeRequest{
+		allocationID:   a.ID,
+		allocationTx:   a.Tx,
+		blobbers:       a.Blobbers,
+		remotefilepath: path,
+		pageLimit:      pageLimit,
+		level:          level,
+		offsetPath:     offsetPath,
+		updatedDate:    updatedDate,
+		offsetDate:     offsetDate,
+		fileType:       fileType,
+		refType:        refType,
+		wg:             &sync.WaitGroup{},
+		ctx:            a.ctx,
+	}
+	oTreeReq.fullconsensus = float32(a.DataShards + a.ParityShards)
+	oTreeReq.consensusThresh = float32(a.DataShards) / oTreeReq.fullconsensus
+
+	return oTreeReq.GetRefs()
 }
 
 func (a *Allocation) GetFileMeta(path string) (*ConsolidatedFileMeta, error) {
@@ -907,11 +1002,11 @@ func (a *Allocation) RevokeShare(path string, refereeClientID string) error {
 	wg.Wait()
 	if len(success) == len(a.Blobbers) {
 		if len(notFound) == len(a.Blobbers) {
-			return errors.New("share not found")
+			return errors.New("", "share not found")
 		}
 		return nil
 	}
-	return errors.New("consensus not reached")
+	return errors.New("", "consensus not reached")
 }
 
 func (a *Allocation) GetAuthTicket(
@@ -948,7 +1043,7 @@ func (a *Allocation) GetAuthTicket(
 	} else {
 		shareReq.refType = fileref.FILE
 	}
-	if len(refereeEncryptionPublicKey) > 0 {
+	if len(refereeEncryptionPublicKey) > 0 || len(refereeClientID) > 0 {
 		authTicket, err := shareReq.GetAuthTicketForEncryptedFile(refereeClientID, refereeEncryptionPublicKey)
 		if err != nil {
 			return "", err
@@ -1036,7 +1131,7 @@ func (a *Allocation) UploadAuthTicketToBlobber(authticketB64 string, clientEncPu
 		fullconsensus:   float32(a.DataShards + a.ParityShards),
 	}
 	if !consensus.isConsensusOk() {
-		return errors.New("consensus not reached")
+		return errors.New("", "consensus not reached")
 	}
 	return nil
 }
@@ -1104,13 +1199,13 @@ func (a *Allocation) downloadFromAuthTicket(localPath string, authTicket string,
 	}
 	if stat, err := os.Stat(localPath); err == nil {
 		if !stat.IsDir() {
-			return errors.New(fmt.Sprintf("Local path is not a directory '%s'", localPath))
+			return fmt.Errorf("Local path is not a directory '%s'", localPath)
 		}
 		localPath = strings.TrimRight(localPath, "/")
 		_, rFile := filepath.Split(remoteFilename)
 		localPath = fmt.Sprintf("%s/%s", localPath, rFile)
 		if _, err := os.Stat(localPath); err == nil {
-			return errors.New(fmt.Sprintf("Local file already exists '%s'", localPath))
+			return fmt.Errorf("Local file already exists '%s'", localPath)
 		}
 	}
 	if len(a.Blobbers) <= 1 {
@@ -1264,6 +1359,7 @@ func (a *Allocation) CommitFolderChange(operation, preValue, currValue string) (
 	time.Sleep(querySleepTime)
 	retries := 0
 	var t *transaction.Transaction
+
 	for retries < blockchain.GetMaxTxnQuery() {
 		t, err = transaction.VerifyTransaction(txn.Hash, blockchain.GetSharders())
 		if err == nil {
@@ -1331,18 +1427,17 @@ func (a *Allocation) RemoveCollaborator(filePath, collaboratorID string) error {
 	return errors.New("remove_collaborator_failed", "Failed to remove collaborator on all blobbers.")
 }
 
-func (a *Allocation) GetMaxWriteRead() (maxW float64, maxR float64, err error) {
+func (a *Allocation) GetMaxWriteReadFromBlobbers(blobbers []*BlobberAllocation) (maxW float64, maxR float64, err error) {
 	if !a.isInitialized() {
 		return 0, 0, notInitialized
 	}
 
-	blobbersCopy := a.BlobberDetails
-	if len(blobbersCopy) == 0 {
+	if len(blobbers) == 0 {
 		return 0, 0, noBLOBBERS
 	}
 
 	maxWritePrice, maxReadPrice := 0.0, 0.0
-	for _, v := range blobbersCopy {
+	for _, v := range blobbers {
 		if v.Terms.WritePrice.ToToken() > maxWritePrice {
 			maxWritePrice = v.Terms.WritePrice.ToToken()
 		}
@@ -1352,6 +1447,10 @@ func (a *Allocation) GetMaxWriteRead() (maxW float64, maxR float64, err error) {
 	}
 
 	return maxWritePrice, maxReadPrice, nil
+}
+
+func (a *Allocation) GetMaxWriteRead() (maxW float64, maxR float64, err error) {
+	return a.GetMaxWriteReadFromBlobbers(a.BlobberDetails)
 }
 
 func (a *Allocation) GetMinWriteRead() (minW float64, minR float64, err error) {
@@ -1375,6 +1474,17 @@ func (a *Allocation) GetMinWriteRead() (minW float64, minR float64, err error) {
 	}
 
 	return minWritePrice, minReadPrice, nil
+}
+
+func (a *Allocation) GetMaxStorageCostFromBlobbers(size int64, blobbers []*BlobberAllocation) (float64, error) {
+	var cost common.Balance // total price for size / duration
+
+	for _, d := range blobbers {
+		cost += a.uploadCostForBlobber(float64(d.Terms.WritePrice), size,
+			a.DataShards, a.ParityShards)
+	}
+
+	return cost.ToToken(), nil
 }
 
 func (a *Allocation) GetMaxStorageCost(size int64) (float64, error) {

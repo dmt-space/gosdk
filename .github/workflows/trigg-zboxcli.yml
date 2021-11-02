@@ -16,7 +16,7 @@ on:
 jobs:        
   zboxcli:
     name: Triggering zboxcli Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     
     steps:
     - name: Generating JSON for Input

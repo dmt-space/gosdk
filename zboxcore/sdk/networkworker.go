@@ -12,7 +12,8 @@ import (
 	. "github.com/0chain/gosdk/zboxcore/logger"
 	"go.uber.org/zap"
 
-	"github.com/0chain/gosdk/core/common/errors"
+	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/core/conf"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
 	"github.com/0chain/gosdk/zboxcore/zboxutil"
 )
@@ -55,6 +56,10 @@ func UpdateNetworkDetails() error {
 		sdkInitialized = false
 		blockchain.SetMiners(networkDetails.Miners)
 		blockchain.SetSharders(networkDetails.Sharders)
+		conf.InitChainNetwork(&conf.Network{
+			Sharders: networkDetails.Sharders,
+			Miners:   networkDetails.Miners,
+		})
 		sdkInitialized = true
 	}
 	return nil

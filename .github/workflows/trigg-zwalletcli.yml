@@ -16,7 +16,7 @@ on:
 jobs:        
   zwalletcli:
     name: Triggering zwalletcli Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
     
     steps:
     - name: Generating JSON for Input

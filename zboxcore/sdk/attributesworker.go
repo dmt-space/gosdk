@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0chain/gosdk/core/common/errors"
+	"errors"
+
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 
 	"github.com/0chain/gosdk/zboxcore/allocationchange"
@@ -156,7 +158,7 @@ func (ar *AttributesRequest) ProcessAttributes() (err error) {
 		change.Attributes = ar.Attributes
 		change.NumBlocks = 0
 		change.Size = 0
-		change.Operation = allocationchange.UPDATE_ATTRS_OPERATION
+		change.Operation = constants.FileOperationUpdateAttrs
 		commitReq.changes = append(commitReq.changes, change)
 		commitReq.connectionID = ar.connectionID
 		commitReq.wg = &wg

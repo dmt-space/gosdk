@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     steps:
     - name: Set up Go 1.x
@@ -45,7 +45,7 @@ jobs:
 
   make:
     name: Make File
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - build
@@ -105,7 +105,7 @@ jobs:
         
   zproxy:
     name: Triggering 0proxy Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -139,7 +139,7 @@ jobs:
         
   zbox:
     name: Triggering 0box Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -173,7 +173,7 @@ jobs:
         
   zdns:
     name: Triggering 0dns Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -207,7 +207,7 @@ jobs:
         
   zblock:
     name: Triggering 0block Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -241,7 +241,7 @@ jobs:
         
   zsearch:
     name: Triggering 0search Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -275,7 +275,7 @@ jobs:
         
   blobber:
     name: Triggering blobber Build
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, build]
 
     needs: 
     - make
@@ -309,7 +309,7 @@ jobs:
 
 #   zboxcli:
 #     name: Triggering zboxcli Build
-#     runs-on: ubuntu-20.04
+#     runs-on: [self-hosted, build]
     
 #     needs: 
 #     - make
@@ -344,7 +344,7 @@ jobs:
 
 #   zboxmobile:
 #     name: Triggering zboxmobile Build
-#     runs-on: ubuntu-20.04
+#     runs-on: [self-hosted, build]
     
 #     needs: 
 #     - make
@@ -379,7 +379,7 @@ jobs:
 
 #   zwalletcli:
 #     name: Triggering zwalletcli Build
-#     runs-on: ubuntu-20.04
+#     runs-on: [self-hosted, build]
     
 #     needs: 
 #     - make

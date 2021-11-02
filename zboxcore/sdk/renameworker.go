@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0chain/gosdk/core/common/errors"
+	"errors"
+
+	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 
 	"github.com/0chain/gosdk/zboxcore/allocationchange"
@@ -65,7 +67,7 @@ func (req *RenameRequest) renameBlobberObject(blobber *blockchain.StorageNode, b
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
 			req.consensus++
-			req.renameMask |= (1 << uint32(blobberIdx))
+			req.renameMask |= (1 << uint32(blobberIdx)) //Can have race condition
 			Logger.Info(blobber.Baseurl, " "+req.remotefilepath, " renamed.")
 		} else {
 			resp_body, err := ioutil.ReadAll(resp.Body)
@@ -119,7 +121,7 @@ func (req *RenameRequest) ProcessRename() error {
 		newChange.NewName = req.newName
 		newChange.ObjectTree = objectTreeRefs[pos]
 		newChange.NumBlocks = 0
-		newChange.Operation = allocationchange.RENAME_OPERATION
+		newChange.Operation = constants.FileOperationRename
 		newChange.Size = 0
 		commitReq.changes = append(commitReq.changes, newChange)
 		commitReq.connectionID = req.connectionID
