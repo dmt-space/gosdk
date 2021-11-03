@@ -1,0 +1,13 @@
+syntax = "proto3";
+package zchain.pb.magmasc;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/0chain/gosdk/zmagmacore/magmasc/pb";
+
+// TokenPoolReq represents lock pool request implementation.
+message TokenPoolReq {
+  string id = 1;  // @gotags: json:"id"
+  string payee_id = 2;  // empty val means the pool for all
+  google.protobuf.Timestamp expired_at = 3; // empty val means the pool has no time limits
+}

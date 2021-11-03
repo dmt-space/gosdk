@@ -27,8 +27,8 @@ type QoS struct {
 	unknownFields protoimpl.UnknownFields
 
 	DownloadMbps float32 `protobuf:"fixed32,1,opt,name=download_mbps,json=downloadMbps,proto3" json:"download_mbps" yaml:"download_mbps"` // @gotags: json:"download_mbps" yaml:"download_mbps"
-	UploadMbps   float32 `protobuf:"fixed32,2,opt,name=upload_mbps,json=uploadMbps,proto3" json:"upload_mbps" yaml:"upload_mbps"`         // @gotags: json:"upload_mbps" yaml:"upload_mbps"
-	Latency      float32 `protobuf:"fixed32,3,opt,name=latency,proto3" json:"latency"`                                                    // @gotags: json:"latency"
+	UploadMbps   float32 `protobuf:"fixed32,2,opt,name=upload_mbps,json=uploadMbps,proto3" json:"upload_mbps" yaml:"upload_mbps"`       // @gotags: json:"upload_mbps" yaml:"upload_mbps"
+	Latency      float32 `protobuf:"fixed32,3,opt,name=latency,proto3" json:"latency"`                               // @gotags: json:"latency"
 }
 
 func (x *QoS) Reset() {

@@ -25,7 +25,7 @@ type User struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" yaml:"id"`                                            // @gotags: yaml:"id"
+	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" yaml:"id"`                                   // @gotags: yaml:"id"
 	ConsumerId string `protobuf:"bytes,2,opt,name=consumer_id,json=consumerId,proto3" json:"consumer_id,omitempty" yaml:"consumer_id"` // @gotags: yaml:"consumer_id"
 }
 

@@ -26,7 +26,7 @@ type AccessPoint struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id" yaml:"id"`                                                           // @gotags: json:"id" yaml:"id"
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id" yaml:"id"`                                              // @gotags: json:"id" yaml:"id"
 	ProviderExtId string `protobuf:"bytes,2,opt,name=provider_ext_id,json=providerExtId,proto3" json:"provider_ext_id" yaml:"provider_ext_id"` // @gotags: json:"provider_ext_id" yaml:"provider_ext_id"
 	Terms         *Terms `protobuf:"bytes,3,opt,name=terms,proto3" json:"terms,omitempty" yaml:"terms"`                                        // @gotags: yaml:"terms"
 }

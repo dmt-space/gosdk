@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_tokenPool_Decode(t *testing.T) {
+func Test_TokenPool_Decode(t *testing.T) {
 	t.Parallel()
 
 	pool := mockTokenPool()
@@ -52,7 +52,7 @@ func Test_tokenPool_Decode(t *testing.T) {
 	}
 }
 
-func Test_tokenPool_Encode(t *testing.T) {
+func Test_TokenPool_Encode(t *testing.T) {
 	t.Parallel()
 
 	pool := mockTokenPool()

@@ -25,9 +25,9 @@ type Provider struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id" yaml:"id"`                        // @gotags: json:"id" yaml:"id"
+	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id" yaml:"id"`                    // @gotags: json:"id" yaml:"id"
 	ExtId string `protobuf:"bytes,2,opt,name=ext_id,json=extId,proto3" json:"ext_id" yaml:"ext_id"` // @gotags: json:"ext_id" yaml:"ext_id"
-	Host  string `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty" yaml:"host"`        // @gotags: yaml:"host"
+	Host  string `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty" yaml:"host"`                // @gotags: yaml:"host"
 }
 
 func (x *Provider) Reset() {

@@ -1,0 +1,27 @@
+syntax = "proto3";
+package zchain.pb.magmasc;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/0chain/gosdk/zmagmacore/magmasc/pb";
+
+// TokenPool represents token pool implementation.
+message TokenPool {
+  string id = 1;  // @gotags: json:"id"
+  int64 balance = 2;  // @gotags: json:"balance"
+  string holder_id = 3; // @gotags: json:"holder_id"
+  string payee_id = 4;  // @gotags: json:"payee_id"
+  string payer_id = 5;  // @gotags: json:"payer_id"
+  repeated TokenPoolTransfer transfers = 6;
+  google.protobuf.Timestamp expired_at = 7;
+}
+
+// TokenPoolTransfer stores info about token transfers from pool to pool.
+message TokenPoolTransfer {
+  string txn_hash = 1;
+  string from_pool = 2;
+  string to_pool = 3;
+  int64 value = 4;
+  string from_client = 5;
+  string to_client = 6;
+}

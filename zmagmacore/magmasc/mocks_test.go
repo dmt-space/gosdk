@@ -66,26 +66,39 @@ func mockProvider() *Provider {
 func mockTokenPool() *TokenPool {
 	now := time.Now().Format(time.RFC3339Nano)
 	return &TokenPool{
-		ID:       "id:session:" + now,
-		Balance:  1000,
-		HolderID: "id:holder:" + now,
-		PayerID:  "id:payer:" + now,
-		PayeeID:  "id:payee:" + now,
-		Transfers: []TokenPoolTransfer{
-			mockTokenPoolTransfer(),
-			mockTokenPoolTransfer(),
-			mockTokenPoolTransfer(),
+		TokenPool: &pb.TokenPool{
+			Id:       "id:session:" + now,
+			Balance:  1000,
+			HolderId: "id:holder:" + now,
+			PayerId:  "id:payer:" + now,
+			PayeeId:  "id:payee:" + now,
+			Transfers: []*pb.TokenPoolTransfer{
+				mockTokenPoolTransfer(),
+				mockTokenPoolTransfer(),
+				mockTokenPoolTransfer(),
+			},
 		},
 	}
 }
 
-func mockTokenPoolTransfer() TokenPoolTransfer {
+func mockTokenPoolReq() *TokenPoolReq {
+	now := time.Now().Format(time.RFC3339Nano)
+	return &TokenPoolReq{
+		TokenPoolReq: &pb.TokenPoolReq{
+			Id:        "id:session:" + now,
+			PayeeId:   "id:payee:" + now,
+			ExpiredAt: &timestamppb.Timestamp{Seconds: int64(ts.Now() + (1 * 60 * 60))}, // 1 hour from now
+		},
+	}
+}
+
+func mockTokenPoolTransfer() *pb.TokenPoolTransfer {
 	now := time.Now()
 	bin, _ := time.Now().MarshalBinary()
 	hash := sha3.Sum256(bin)
 	fix := now.Format(time.RFC3339Nano)
 
-	return TokenPoolTransfer{
+	return &pb.TokenPoolTransfer{
 		TxnHash:    hex.EncodeToString(hash[:]),
 		FromPool:   "id:from:pool:" + fix,
 		ToPool:     "id:to:pool:" + fix,

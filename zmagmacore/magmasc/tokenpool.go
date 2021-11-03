@@ -4,17 +4,13 @@ import (
 	"encoding/json"
 
 	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk/zmagmacore/magmasc/pb"
 )
 
 type (
 	// TokenPool represents token pool implementation.
 	TokenPool struct {
-		ID        string              `json:"id"`
-		Balance   int64               `json:"balance"`
-		HolderID  string              `json:"holder_id"`
-		PayerID   string              `json:"payer_id"`
-		PayeeID   string              `json:"payee_id"`
-		Transfers []TokenPoolTransfer `json:"transfers,omitempty"`
+		*pb.TokenPool
 	}
 )
 
@@ -23,19 +19,19 @@ var (
 	_ util.Serializable = (*TokenPool)(nil)
 )
 
+// NewTokenPool creates initialized NewTokenPool.
+func NewTokenPool() *TokenPool {
+	return &TokenPool{TokenPool: &pb.TokenPool{Transfers: []*pb.TokenPoolTransfer{}}}
+}
+
 // Decode implements util.Serializable interface.
 func (m *TokenPool) Decode(blob []byte) error {
-	var pool TokenPool
+	pool := NewTokenPool()
 	if err := json.Unmarshal(blob, &pool); err != nil {
 		return ErrDecodeData.Wrap(err)
 	}
 
-	m.ID = pool.ID
-	m.Balance = pool.Balance
-	m.HolderID = pool.HolderID
-	m.PayerID = pool.PayerID
-	m.PayeeID = pool.PayeeID
-	m.Transfers = pool.Transfers
+	m.TokenPool = pool.TokenPool
 
 	return nil
 }
