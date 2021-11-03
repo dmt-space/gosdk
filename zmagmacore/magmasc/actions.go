@@ -468,3 +468,59 @@ func ExecuteUserUpdate(ctx context.Context, user *User) (*User, error) {
 
 	return user, nil
 }
+
+// ExecuteRewardPoolLock executes reward pool lock magma sc function.
+func ExecuteRewardPoolLock(ctx context.Context, req *TokenPoolReq, val int64) (*TokenPool, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	input := req.Encode()
+	hash, err := txn.ExecuteSmartContract(ctx, Address, RewardPoolLockFuncName, string(input), val)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	var pool *TokenPool
+	if err = pool.Decode([]byte(txn.TransactionOutput)); err != nil {
+		return nil, err
+	}
+
+	return pool, nil
+}
+
+// ExecuteRewardPoolUnLock executes reward pool unlock magma sc function.
+func ExecuteRewardPoolUnLock(ctx context.Context, req *TokenPoolReq) (*TokenPool, error) {
+	txn, err := transaction.NewTransactionEntity()
+	if err != nil {
+		return nil, err
+	}
+
+	pool, err := RewardPoolFetch(req.PoolID())
+	if err != nil {
+		return nil, err
+	}
+
+	input := req.Encode()
+	hash, err := txn.ExecuteSmartContract(ctx, Address, RewardPoolUnlockFuncName, string(input), pool.GetBalance())
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err = transaction.VerifyTransaction(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = pool.Decode([]byte(txn.TransactionOutput)); err != nil {
+		return nil, err
+	}
+
+	return pool, nil
+}

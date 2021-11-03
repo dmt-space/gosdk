@@ -16,11 +16,11 @@ const (
 
 const (
 	// RewardPoolLockFuncName represents the name of MagmaSmartContract function.
-	// When function is called it means that wallet creates a new locked token pool.
+	// When function is called it means that the reward pool is locked.
 	RewardPoolLockFuncName = "reward_pool_lock"
 
 	// RewardPoolUnlockFuncName represents the name of MagmaSmartContract function.
-	// When function is called it means that wallet refunds a locked token pool.
+	// When function is called it means that reward pool is unlocked.
 	RewardPoolUnlockFuncName = "reward_pool_unlock"
 
 	// RewardPoolExistRP represents MagmaSC relative path.

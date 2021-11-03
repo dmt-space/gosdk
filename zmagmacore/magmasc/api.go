@@ -304,3 +304,22 @@ func IsUserRegisteredRP(id string) (bool, error) {
 
 	return registered, nil
 }
+
+// RewardPoolFetch makes smart contract rest api call to magma smart contract
+// RewardPoolFetchRP rest point to get the reward token pool with provided ID.
+func RewardPoolFetch(id string) (*TokenPool, error) {
+	params := map[string]string{
+		"id": id,
+	}
+	registeredByt, err := http.MakeSCRestAPICall(Address, RewardPoolFetchRP, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var pool *TokenPool
+	if err := json.Unmarshal(registeredByt, &pool); err != nil {
+		return nil, err
+	}
+
+	return pool, nil
+}
