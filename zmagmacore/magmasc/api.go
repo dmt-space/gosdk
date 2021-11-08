@@ -316,7 +316,7 @@ func RewardPoolFetch(id string) (*TokenPool, error) {
 		return nil, err
 	}
 
-	var pool *TokenPool
+	pool := NewTokenPool()
 	if err := json.Unmarshal(registeredByt, &pool); err != nil {
 		return nil, err
 	}

@@ -487,7 +487,7 @@ func ExecuteRewardPoolLock(ctx context.Context, req *TokenPoolReq, val int64) (*
 		return nil, err
 	}
 
-	var pool *TokenPool
+	pool := NewTokenPool()
 	if err = pool.Decode([]byte(txn.TransactionOutput)); err != nil {
 		return nil, err
 	}
