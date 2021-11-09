@@ -11,9 +11,11 @@ on:
         default: 'no'
         required: true
       version_tag:
-        description: 'Input Tag Example - v1.2.2'
+        description: 'Input major or miner for release type. Default is patch'
+        default: 'patch'
         required: true
-jobs:        
+
+jobs:
   zboxmobile:
     name: Triggering zboxmobile Build
     runs-on: [self-hosted, build]

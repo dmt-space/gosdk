@@ -11,7 +11,7 @@ on:
         default: 'no'
         required: true
 
-jobs:        
+jobs:
   zdns:
     name: Triggering 0dns Build
     runs-on: [self-hosted, build]
@@ -45,4 +45,3 @@ jobs:
         SHORT_SHA=$(echo $GITHUB_SHA | head -c 8)
       env:
         TAG: ${{ github.event.inputs.latest_tag }}
-      

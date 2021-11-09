@@ -11,7 +11,7 @@ on:
         default: 'no'
         required: true
 
-jobs:        
+jobs:
   blobber:
     name: Triggering blobber Build
     runs-on: [self-hosted, build]

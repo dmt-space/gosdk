@@ -11,7 +11,7 @@ on:
         default: 'no'
         required: true
 
-jobs:        
+jobs:
   zsearch:
     name: Triggering 0search Build
     runs-on: [self-hosted, build]

@@ -11,7 +11,7 @@ on:
         default: 'no'
         required: true
 
-jobs:        
+jobs:
   zproxy:
     name: Triggering 0proxy Build
     runs-on: [self-hosted, build]
