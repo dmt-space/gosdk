@@ -48,7 +48,7 @@ type SignatureScheme interface {
 	Verify(signature string, msg string) (bool, error)
 
 	// Combine signature for schemes BLS
-	//Add(signature, msg string) (string, error)
+	Add(signature, msg string) (string, error)
 
 	// implement SplitSignatureScheme
 
