@@ -13,12 +13,18 @@ import (
 	"github.com/tyler-smith/go-bip39"
 
 	"github.com/0chain/gosdk/core/encryption"
+	"github.com/miracl/core/go/core/BN254"
 )
 
 func init() {
 	err := bls.Init(bls.CurveFp254BNb)
 	if err != nil {
 		panic(err)
+	}
+
+	res := BN254.Init()
+	if res != 0 {
+		panic("Failed to Initialize BN254\n")
 	}
 }
 
@@ -83,7 +89,6 @@ func (b0 *MiraclScheme) SetPrivateKey(privateKey string) error {
 		return errors.New("set_private_key", "private key already exists")
 	}
 	b0.PrivateKey = privateKey
-	//ToDo: b0.publicKey should be set here?
 	return nil
 }
 
@@ -137,11 +142,33 @@ func (b0 *MiraclScheme) SplitKeys(numSplits int) (*Wallet, error) {
 
 //Sign sign message
 func (b0 *MiraclScheme) Sign(hash string) (string, error) {
-	sig, err := b0.rawSign(hash)
+
+	if b0.PrivateKey == "" {
+		return "", errors.New("raw_sign", "private key does not exists for signing")
+	}
+
+	rawHash, err := hex.DecodeString(hash)
 	if err != nil {
 		return "", err
 	}
-	return sig.SerializeToHexStr(), nil
+	if rawHash == nil {
+		return "", errors.New("raw_sign", "failed hash while signing")
+	}
+
+	const BFS = BN254.BFS
+	const G1S = BFS + 1 /* Group 1 Size */
+
+	var SIG [G1S]byte
+
+	S, err := hex.DecodeString(b0.PrivateKey)
+	if err != nil {
+		return "", err
+	}
+
+	BN254.Core_Sign(SIG[:], rawHash, S[:])
+
+	return hex.EncodeToString(SIG[:]), nil
+
 }
 
 //SetPublicKey - implement interface
@@ -152,7 +179,8 @@ func (b0 *MiraclScheme) SetPublicKey(publicKey string) error {
 	if b0.PublicKey != "" {
 		return errors.New("set_public_key", "public key already exists")
 	}
-	b0.PublicKey = MiraclToHerumiPK(publicKey)
+	b0.PublicKey = publicKey
+	//b0.PublicKey = MiraclToHerumiPK(publicKey)
 	return nil
 }
 
@@ -163,15 +191,16 @@ func (b0 *MiraclScheme) GetPublicKey() string {
 
 //Verify - implement interface
 func (b0 *MiraclScheme) Verify(signature, msg string) (bool, error) {
+
 	if b0.PublicKey == "" {
 		return false, errors.New("verify", "public key does not exists for verification")
 	}
-	var sig bls.Sign
-	var pk bls.PublicKey
-	err := sig.DeserializeHexStr(signature)
+
+	W, err := hex.DecodeString(b0.PublicKey)
 	if err != nil {
 		return false, err
 	}
+
 	rawHash, err := hex.DecodeString(msg)
 	if err != nil {
 		return false, err
@@ -179,8 +208,40 @@ func (b0 *MiraclScheme) Verify(signature, msg string) (bool, error) {
 	if rawHash == nil {
 		return false, errors.New("verify", "failed hash while signing")
 	}
-	pk.DeserializeHexStr(b0.PublicKey)
-	return sig.Verify(&pk, string(rawHash)), nil
+
+	SIG, err := hex.DecodeString(signature)
+	if err != nil {
+		return false, err
+	}
+
+	res := BN254.Core_Verify(SIG[:], rawHash, W[:])
+
+	if res == 0 {
+		return true, nil
+	}
+
+	return false, errors.New("invalid_signature", "invalid signature")
+
+	// if b0.PublicKey == "" {
+	// 	return false, errors.New("verify", "public key does not exists for verification")
+	// }
+
+	// var sig bls.Sign
+	// var pk bls.PublicKey
+	// err := sig.DeserializeHexStr(signature)
+	// if err != nil {
+	// 	return false, err
+	// }
+	// rawHash, err := hex.DecodeString(msg)
+	// if err != nil {
+	// 	return false, err
+	// }
+	// if rawHash == nil {
+	// 	return false, errors.New("verify", "failed hash while signing")
+	// }
+	// pk.DeserializeHexStr(b0.PublicKey)
+	// return sig.Verify(&pk, string(rawHash)), nil
+
 }
 
 func (b0 *MiraclScheme) Add(signature, msg string) (string, error) {
@@ -225,23 +286,44 @@ func (b0 *MiraclScheme) generateKeys(password string) (*Wallet, error) {
 	// Generate a Bip32 HD wallet for the mnemonic and a user supplied password
 	seed := bip39.NewSeed(b0.Mnemonic, password)
 	r := bytes.NewReader(seed)
-	bls.SetRandFunc(r)
+	// bls.SetRandFunc(r)
 
 	// New Wallet
 	w := &Wallet{}
 	w.Keys = make([]KeyPair, 1)
 
-	// Generate pair
-	var sk bls.SecretKey
-	sk.SetByCSPRNG()
-	w.Keys[0].PrivateKey = sk.SerializeToHexStr()
-	pub := sk.GetPublicKey()
-	w.Keys[0].PublicKey = pub.SerializeToHexStr()
+	// // Generate pair
+	// var sk bls.SecretKey
+	// sk.SetByCSPRNG()
+	// w.Keys[0].PrivateKey = sk.SerializeToHexStr()
+	// pub := sk.GetPublicKey()
+	// w.Keys[0].PublicKey = pub.SerializeToHexStr()
+
+	const BGS = BN254.BGS
+	const BFS = BN254.BFS
+	const G1S = BFS + 1   /* Group 1 Size */
+	const G2S = 2*BFS + 1 /* Group 2 Size */
+
+	var S [BGS]byte
+	var W [G2S]byte
+	//var SIG [G1S]byte
+	IKM := make([]byte, 32)
+
+	r.Read(IKM)
+
+	res := BN254.KeyPairGenerate(IKM[:], S[:], W[:])
+	if res != 0 {
+		fmt.Printf("Failed to generate keys\n")
+		//	return
+	}
+
+	w.Keys[0].PrivateKey = hex.EncodeToString(S[:])
+	w.Keys[0].PublicKey = hex.EncodeToString(W[:])
 
 	b0.PrivateKey = w.Keys[0].PrivateKey
 	b0.PublicKey = w.Keys[0].PublicKey
 	w.ClientKey = w.Keys[0].PublicKey
-	w.ClientID = encryption.Hash(pub.Serialize())
+	w.ClientID = encryption.Hash(W[:])
 	w.Mnemonic = b0.Mnemonic
 	w.Version = CryptoVersion
 	w.DateCreated = time.Now().Format(time.RFC3339)

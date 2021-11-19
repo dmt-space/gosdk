@@ -2,7 +2,13 @@
 
 package zcncrypto
 
-import "github.com/herumi/bls-go-binary/bls"
+import (
+	"encoding/hex"
+	"fmt"
+
+	"github.com/0chain/gosdk/bls"
+	//"github.com/herumi/bls-go-binary/bls"
+)
 
 // Converts public key 'pk' to format that the herumi/bls library likes.
 // It's possible to get a MIRACL PublicKey which is of much longer format
@@ -26,4 +32,40 @@ func MiraclToHerumiPK(pk string) string {
 	var p bls.PublicKey
 	p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
 	return p.SerializeToHexStr()
+}
+
+func HerumiToMiraclPK(pk string) string {
+
+	if len(pk) != len(miraclExamplePK) {
+		// If input is normal herumi/bls public key, it returns it immmediately.
+		return pk
+	}
+	n1 := pk[2:66]
+	n2 := pk[66:(66 + 64)]
+	n3 := pk[(66 + 64):(66 + 64 + 64)]
+	n4 := pk[(66 + 64 + 64):(66 + 64 + 64 + 64)]
+	var p bls.PublicKey
+	err := p.SetHexString("1 " + n2 + " " + n1 + " " + n4 + " " + n3)
+	if err != nil {
+		//Logger.Error("MiraclToHerumiPK: " + err.Error())
+	}
+	return p.SerializeToHexStr()
+}
+
+func DeserializeHerumiPK(pk string) (string, error) {
+
+	var pub bls.PublicKey
+	//pub.SetHexString(pk)
+
+	pub.DeserializeHexStr(pk)
+
+	return pub.ToString(), nil
+
+}
+
+func hex2byte(s string) ([]byte, error) {
+	if (len(s) & 1) == 1 {
+		return nil, fmt.Errorf("odd length")
+	}
+	return hex.DecodeString(s)
 }
