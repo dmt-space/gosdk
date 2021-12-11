@@ -86,6 +86,8 @@ type ConsolidatedFileMeta struct {
 	CommitMetaTxns  []fileref.CommitMetaTxn
 	Collaborators   []fileref.Collaborator
 	Attributes      fileref.Attributes
+	CreatedAt       string
+	UpdatedAt       string
 }
 
 type AllocationStats struct {
@@ -316,7 +318,7 @@ func (a *Allocation) EncryptAndUpdateFile(workdir string, localpath string, remo
 func (a *Allocation) EncryptAndUploadFile(workdir string, localpath string, remotepath string,
 	attrs fileref.Attributes, status StatusCallback) error {
 
-	return a.StartChunkedUpload(workdir, localpath, remotepath, status, false,false, "", true, attrs)
+	return a.StartChunkedUpload(workdir, localpath, remotepath, status, false, false, "", true, attrs)
 }
 
 // EncryptAndUpdateFileWithThumbnail [Deprecated]please use CreateChunkedUpload
@@ -730,6 +732,8 @@ func (a *Allocation) GetFileMeta(path string) (*ConsolidatedFileMeta, error) {
 		result.Attributes = ref.Attributes
 		result.ActualFileSize = ref.Size
 		result.ActualNumBlocks = ref.NumBlocks
+		result.CreatedAt = ref.CreatedAt
+		result.UpdatedAt = ref.UpdatedAt
 		return result, nil
 	}
 	return nil, errors.New("file_meta_error", "Error getting the file meta data from blobbers")
@@ -775,6 +779,8 @@ func (a *Allocation) GetFileMetaFromAuthTicket(authTicket string, lookupHash str
 		result.CommitMetaTxns = ref.CommitMetaTxns
 		result.ActualFileSize = ref.Size
 		result.ActualNumBlocks = ref.NumBlocks
+		result.CreatedAt = ref.CreatedAt
+		result.UpdatedAt = ref.UpdatedAt
 		return result, nil
 	}
 	return nil, errors.New("file_meta_error", "Error getting the file meta data from blobbers")
@@ -834,12 +840,12 @@ func (a *Allocation) deleteFromBlobber(path, blobberUrl string, threshConsensus,
 
 	blobbers := make([]*blockchain.StorageNode, 0)
 	for idx := range a.Blobbers {
-		if a.Blobbers[idx].Baseurl == blobberUrl{
+		if a.Blobbers[idx].Baseurl == blobberUrl {
 			blobbers = append(blobbers, a.Blobbers[idx])
 		}
 	}
 
-	if len(blobbers) == 0{
+	if len(blobbers) == 0 {
 		return errors.New("invalid_path", "Selected blobber not found")
 	}
 
@@ -871,7 +877,6 @@ func (a *Allocation) deleteFile(path string, threshConsensus, fullConsensus floa
 	if !isabs {
 		return errors.New("invalid_path", "Path should be valid and absolute")
 	}
-
 
 	req := &DeleteRequest{}
 	req.blobbers = a.Blobbers

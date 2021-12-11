@@ -34,6 +34,8 @@ type fileInfo struct {
 	Hash       string             `json:"hash"`
 	Type       string             `json:"type"`
 	Attributes fileref.Attributes `json:"attributes"`
+	CreatedAt  string             `json:"created_at"`
+	UpdatedAt  string             `json:"updated_at"`
 }
 
 type FileDiff struct {
@@ -54,7 +56,15 @@ func (a *Allocation) getRemoteFilesAndDirs(dirList []string, fMap map[string]fil
 			if _, ok := exclMap[child.Path]; ok {
 				continue
 			}
-			fMap[child.Path] = fileInfo{Size: child.Size, ActualSize: child.ActualSize, Hash: child.Hash, Type: child.Type, Attributes: child.Attributes}
+			fMap[child.Path] = fileInfo{
+				Size:       child.Size,
+				ActualSize: child.ActualSize,
+				Hash:       child.Hash,
+				Type:       child.Type,
+				Attributes: child.Attributes,
+				CreatedAt:  child.CreatedAt,
+				UpdatedAt:  child.UpdatedAt,
+			}
 			if child.Type == fileref.DIRECTORY {
 				childDirList = append(childDirList, child.Path)
 			}
